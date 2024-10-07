@@ -1,15 +1,13 @@
 clear
 % Load the data from the MAT file
-data = importdata('C:\Users\2021\Desktop\SocialChoice\university-ranking-test.mat');
-datasetname = 'university-ranking';
+data = importdata('D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat');
 %参数
 TopK = 10;
 
 % Get the size of the data matrix
-%[row, col, dim] = size(data);
 rankernum = size(data,1);
 querynum = size(data,2);
-gallerynum = size(data,3);
+gallerynum = size(data,3);  
 [~,ranklists] = sort(data,3);
 
 converged = zeros(querynum,rankernum);
@@ -26,7 +24,7 @@ end
 [~,origin_ranklist] = sort(-L,2);
 [~,origin_rank] = sort(origin_ranklist,2);
 [~,original_voters] = sort(-data,3);
-% [~,original_voters] = sort(-data,3);
+
 
 for q=1:querynum
     now_L =  origin_ranklist(q,:);
@@ -45,10 +43,7 @@ for q=1:querynum
                [~,V_ranklist] = sort(-data(r,q,:),3);
                V_ranklist = reshape(V_ranklist,1,gallerynum);
                [~,V_rank] = sort(V_ranklist,2);
-%                V_ranklist = V_ranklist(1:30);
-%                V_rank = V_rank(1:30);
                for j=1:TopK
-%                    idx_V = find(V_rank == j);
                    idx_V = V_ranklist(j);
                    distance = distance + abs(j/TopK - (now_L_rank(idx_V)/gallerynum));
                end
@@ -65,11 +60,9 @@ for q=1:querynum
         end
         new_L = zeros(1,gallerynum);
         for r=1:rankernum
-%             L(q,:) = reshape(L(q,:) * now_w(1,r),1,gallerynum);
             new_L(1,:) = new_L(1,:) + reshape(double(data(r,q,:)) * now_w(1,r),1,gallerynum);
             pre_w(1,r) = now_w(1,r);
         end
-%         [~,now_L] =  sort(-L(q,:),2);
         [~,now_L] =  sort(-new_L,2);
         [~,now_L_rank] = sort(now_L,2);
     end
@@ -83,13 +76,12 @@ for j=1:querynum
     end
 end
 
-filename = sprintf('result-%s-DIBRA.mat', datasetname);
-save(filename,'new_L');
+[~,total_ranklist] = sort(-new_L,2);
+[~,result] = sort(total_ranklist,2);
+save('D:\LocalGit\RA-toolbox\matlab.mat', 'result');
 
 
 
-% [~,total_ranklist] = sort(-new_L,2);
-% [~,total_rank] = sort(total_ranklist,2);
 % result_1 = [];
 % query_label0 = importdata('C:\Users\29984\Desktop\new_worker\order_fea\bdb-cuhk03detected-query_id-.mat');
 % query_label = query_label0';
