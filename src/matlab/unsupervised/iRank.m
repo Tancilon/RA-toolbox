@@ -1,5 +1,5 @@
 % for calculagraph
-num_runs = 10;
+num_runs = 1;
 % calculagraph
 calculagraph = zeros(1, num_runs);
 
@@ -7,9 +7,8 @@ for times = 1:num_runs
 
     % full ranking
     start_time = tic;
-    dataset_name = 'ice cream';
 
-    sim = importdata('D:\Code of RA\Preflib\results\ice-cream\ice-cream.mat');
+    sim = importdata('D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat');
     rankernum = size(sim,1);
     querynum = size(sim,2);
     item_num = size(sim,3);
@@ -56,7 +55,7 @@ for times = 1:num_runs
     [~,result] = sort(-finalsim,2);
     [~,result] = sort(result,2);
     % save the .mat file which consist of the rank result
-    save('D:\Code of RA\Preflib\results\ice-cream\rank-based\rank-result-ice-cream-iRank.mat', 'result');
+    save('D:\LocalGit\RA-toolbox\matlab.mat', 'result');
 
     end_time = toc(start_time);
 

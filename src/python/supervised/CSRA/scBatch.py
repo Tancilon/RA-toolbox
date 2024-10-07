@@ -10,7 +10,6 @@ import scipy.io as sio
 import feature
 from block1 import Model
 import os
-from tqdm import tqdm
 from scipy import io
 import random
 import h5py

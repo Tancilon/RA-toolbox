@@ -10,7 +10,6 @@ import scipy.io as sio
 import feature
 from block1 import Model
 import os
-from tqdm import tqdm
 from scipy import io
 import random
 import h5py
@@ -20,12 +19,12 @@ os.environ["HDF5_USE_FILE_LOCKING"] = 'FALSE'
 
 is_train = False  # True = train, False = test/validation
 is_validation = False  # True = validation, False = test
-batch_size = 15
+batch_size = 16
 iter = 1
 learning_rate = 0.0001  # 1e-4
 train_bool = True
 kk = 10
-path='/dat01/fanxinyao/ext-CSRA/aggregate/cuhk03labeled/data/'
+path='/dat01/fanxinyao/ext-CSRA/aggregate/cuhk03detected/data/'
 
 def longtailfunc(x):
 	# r = -0.001*x+1.001
@@ -41,7 +40,7 @@ def longtailfunc(x):
 
 # Load data
 if is_train == True:
-	data = h5py.File('../data/train.mat', 'r')
+	data = h5py.File(os.path.join(path, 'Train.mat'), 'r')
 	train_x = np.transpose(data['Train'])
 
 	labels_gallery = sio.loadmat(os.path.join(path, 'labels_gallery.mat'))
@@ -54,7 +53,7 @@ if is_train == True:
 	acc_value = acc_func['acc_func']
 
 else:
-	data = h5py.File('../data/test.mat', 'r')
+	data = h5py.File(os.path.join(path, 'Test.mat'), 'r')
 	train_x = np.transpose(data['Test'])
 
 	labels_gallery = sio.loadmat(os.path.join(path, 'labels_gallery.mat'))
@@ -249,72 +248,60 @@ if is_train:
 
 # Test
 else:
-    j=10
-    while j<=20000:
-        for i in range(0, iter):
-            # Get features and labels
-            test_fea_file = '../test_feature.mat'
-            test_lab_file = '../test_label.mat'
+    for i in range(0, iter):
+        # Get features and labels
+        test_fea_file = '../test_feature.mat'
+        test_lab_file = '../test_label.mat'
 
-            # if the test_fea_file or test_lab_file not exist
-            if not (os.path.isfile(test_fea_file) and os.path.isfile(test_lab_file)):
-                if i == 0:
-                    train_x_median = np.median(train_x, axis=0)
-                    train_x_max = np.argmax(train_x_median, axis=1)
-                else:
-                    train_x_max = np.argmax(weighted_scores, axis=1)
-
-                fea = feature.FeatureRepresenter_3D(workers, probe, gallery, 3, 5, 5)
-                fea.generate_features_3d(train_x, train_x_max, acc_value)
-                train_input, train_label = fea.get_features_3d(train_x, gallery_labels, probe_labels, acc_value)
-
-                train_label = np.reshape(train_label, [-1, 1])
-
-                io.savemat(test_fea_file, {'feature': train_input})
-                io.savemat(test_lab_file, {'label': train_label})
-
-            feature = sio.loadmat(test_fea_file)
-            train_input = feature['feature']
-            label = sio.loadmat(test_lab_file)
-            train_label = label['label']
-            print('get test features and labels successfully')
-
-            saver = tf.train.Saver()
-            # model_file = tf.train.latest_checkpoint('block1batch/')
-            model_file = '../block1batch/epoch'+str(j)
-            epoch = model_file.split('/')[-1]
-            print('ckpt:', model_file)
-            print('epoch:', epoch)
-            saver.restore(sess, model_file)
-            prediction = []
-            for f in range(0, workers * probe):
-                input = np.reshape(train_input[f], [-1,kk])
-                label_input = np.reshape(train_label[f], [-1, 1])
-                position_scores = np.ones([probe, 1])
-                position_labels = np.ones(probe)
-
-                pre, label, _ = sess.run([model.prediction, y_, train_op1],
-                                         feed_dict={x: input, y_: label_input, pos_s: position_scores,
-                                                    pos_l: position_labels})
-                prediction.append(pre[0])
-            # print(f)
-            if is_validation:
-                io.savemat('train_block1_label' + str(i) + '.mat', {'label': train_label})
-                io.savemat('train_block1_prediciton' + str(i) + '.mat', {'prediction': prediction})
+        # if the test_fea_file or test_lab_file not exist
+        if not (os.path.isfile(test_fea_file) and os.path.isfile(test_lab_file)):
+            if i == 0:
+                train_x_median = np.median(train_x, axis=0)
+                train_x_max = np.argmax(train_x_median, axis=1)
             else:
-                io.savemat('../testres/test_block1_label' + str(i) + '_' + epoch + '.mat', {'label': train_label})
-                io.savemat('../testres/test_block1_prediciton' + str(i) + '_' + epoch + '.mat',
-                           {'prediction': prediction})
-            if j==10:
-                j=50
-            elif j==50:
-                j=100
-            elif j==100:
-                j=500
-            elif j>=500 and j<2000:
-                j=j+500
-            else:
-                j=j+1000
+                train_x_max = np.argmax(weighted_scores, axis=1)
+
+            fea = feature.FeatureRepresenter_3D(workers, probe, gallery, 3, 5, 5)
+            fea.generate_features_3d(train_x, train_x_max, acc_value)
+            train_input, train_label = fea.get_features_3d(train_x, gallery_labels, probe_labels, acc_value)
+
+            train_label = np.reshape(train_label, [-1, 1])
+
+            io.savemat(test_fea_file, {'feature': train_input})
+            io.savemat(test_lab_file, {'label': train_label})
+
+        feature = sio.loadmat(test_fea_file)
+        train_input = feature['feature']
+        label = sio.loadmat(test_lab_file)
+        train_label = label['label']
+        print('get test features and labels successfully')
+
+        saver = tf.train.Saver()
+        # model_file = tf.train.latest_checkpoint('block1batch/')
+        model_file = '../block1batch/epoch10'
+        epoch = model_file.split('/')[-1]
+        print('ckpt:', model_file)
+        print('epoch:', epoch)
+        saver.restore(sess, model_file)
+        prediction = []
+        for f in range(0, workers * probe):
+            input = np.reshape(train_input[f], [-1,kk])
+            label_input = np.reshape(train_label[f], [-1, 1])
+            position_scores = np.ones([probe, 1])
+            position_labels = np.ones(probe)
+
+            pre, label, _ = sess.run([model.prediction, y_, train_op1],
+                                     feed_dict={x: input, y_: label_input, pos_s: position_scores,
+                                                pos_l: position_labels})
+            prediction.append(pre[0])
+        # print(f)
+        if is_validation:
+            io.savemat('train_block1_label' + str(i) + '.mat', {'label': train_label})
+            io.savemat('train_block1_prediciton' + str(i) + '.mat', {'prediction': prediction})
+        else:
+            io.savemat('../testres/test_block1_label' + str(i) + '_' + epoch + '.mat', {'label': train_label})
+            io.savemat('../testres/test_block1_prediciton' + str(i) + '_' + epoch + '.mat',
+                       {'prediction': prediction})
 # weighted_scores = []
 # for j in range(0,probe):
 # 	abilities = []

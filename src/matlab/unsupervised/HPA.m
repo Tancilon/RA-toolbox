@@ -1,5 +1,5 @@
 % for calculagraph
-num_runs = 10;
+num_runs = 1;
 % calculagraph
 calculagraph = zeros(1, num_runs);
 
@@ -9,7 +9,7 @@ for times = 1:num_runs
 
     dataset_name = 'ice cream';
 
-    sim = importdata('D:\Code of RA\Preflib\results\ice-cream\ice-cream.mat');
+    sim = importdata('D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat');
 
     rankernum = size(sim,1);
     querynum = size(sim,2);
@@ -23,9 +23,9 @@ for times = 1:num_runs
         finalRank = hpa_func(reshape(sim(:,i,:),rankernum,item_num)',topK);
         result(i,:) = finalRank';
     end
-    
+    res = result';
     % save the .mat file which consist of the rank result
-    save('D:\Code of RA\Preflib\results\ice-cream\rank-based\rank-result-ice-cream-HPA.mat', 'res');
+    save('D:\LocalGit\RA-toolbox\matlab.mat', 'res');
 
     end_time = toc(start_time);
    
