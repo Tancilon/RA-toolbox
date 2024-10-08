@@ -12,24 +12,34 @@ import pandas as pd
 import csv
 import scorefunc as sc
 
-def CombANZAgg(input_list):
 
+def combanz_agg(input_list):
+    """
+    Aggregate scores for items based on rankings provided by voters.
+    Parameters
+    ----------
+    input_list : numpy.ndarray
+        A 2D array where each row represents a voter's ranking of items.
+
+    Returns
+    -------
+    numpy.ndarray
+        An array containing the final ranks of the items after aggregation.
+    """
     num_voters = input_list.shape[0]
     num_items = input_list.shape[1]
     item_comb_score = np.zeros(num_items)
-    item_score = np.zeros((num_voters,num_items))
-# This score_list updates rank to score with different ways
     item_score = sc.linearagg(input_list)
-    print(item_score)
-    
+
     for i in range(num_items):
         item_min_score = np.zeros(num_voters)
         for k in range(num_voters):
-            item_min_score[k] = item_score[k,i]
-# CombANZ is selection of original rankings, in this case, is all.
+            item_min_score[k] = item_score[k, i]
+        # CombANZ is selection of original rankings, in this case, is all.
         item_comb_score[i] = (1 / num_voters) * sum(item_min_score)
+
     first_row = item_comb_score
-# 进行排序并返回排序后的列索引
+    # Sort the scores in descending order to get the ranking
     sorted_indices = np.argsort(first_row)[::-1]
 
     currrent_rank = 1
@@ -37,45 +47,50 @@ def CombANZAgg(input_list):
     for index in sorted_indices:
         result[index] = currrent_rank
         currrent_rank += 1
+
     return result
 
 
-def CombANZ(input, output):
-    df = pd.read_csv(input,header=None)
-    df.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']
+def combanz(input_file_path, output_file_path):
+    """
+    Process the input CSV file to aggregate rankings and write the results to an output CSV file.
+    Parameters
+    ----------
+    input_file_path : str
+        Path to the input CSV file.
+    output_file_path : str
+        Path to the output CSV file.
+    """
+    df = pd.read_csv(input_file_path, header=None)
+    df.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
 
-    # 获取唯一的Query值
+    # Get unique Query values
     unique_queries = df['Query'].unique()
-    # 创建一个空的DataFrame来存储结果
+    # Create an empty DataFrame to store results
     result = []
 
     for query in unique_queries:
-        # 筛选出当前Query的数据
+        # Filter data for the current Query
         query_data = df[df['Query'] == query]
 
-        # 创建空字典来保存Item Code和Voter Name的映射关系
-        item_code_mapping = {}
-        voter_name_mapping = {}
-
-        # 获取唯一的Item Code和Voter Name值，并创建索引到整数的映射
+        # Get unique Item Code and Voter Name values, create mappings
         unique_item_codes = query_data['Item Code'].unique()
         unique_voter_names = query_data['Voter Name'].unique()
 
-        # 建立整数到字符串的逆向映射
+        # Create reverse mappings
         item_code_reverse_mapping = {i: code for i, code in enumerate(unique_item_codes)}
         voter_name_reverse_mapping = {i: name for i, name in enumerate(unique_voter_names)}
 
-        # 生成字符串到整数的映射
+        # Generate string-to-integer mappings
         item_code_mapping = {v: k for k, v in item_code_reverse_mapping.items()}
         voter_name_mapping = {v: k for k, v in voter_name_reverse_mapping.items()}
 
-        # 创建Voter Name*Item Code的二维Numpy数组，初始值为0
+        # Initialize a 2D Numpy array for Voter Name*Item Code with NaN values
         num_voters = len(unique_voter_names)
         num_items = len(unique_item_codes)
-        #input_list = np.nan((num_voters, num_items))
         input_list = np.full((num_voters, num_items), np.nan)
 
-        #填充数组
+        # Populate the array
         for index, row in query_data.iterrows():
             voter_name = row['Voter Name']
             item_code = row['Item Code']
@@ -85,17 +100,18 @@ def CombANZ(input, output):
             item_index = item_code_mapping[item_code]
 
             input_list[voter_index, item_index] = item_rank
-        # 调用函数，获取排名信息
-        rank = CombANZAgg(input_list)
 
-        # 将结果添加到result_df中
-        for item_code_index, item_rank in enumerate(rank):   
+        # Call function to get ranking information
+        rank = combanz_agg(input_list)
+
+        # Add results to the result list
+        for item_code_index, item_rank in enumerate(rank):
             item_code = item_code_reverse_mapping[item_code_index]
-            #result_df = result_df.append({'Query': query, 'Item Code': item_code, 'Rank': item_rank}, ignore_index=True)
             new_row = [query, item_code, item_rank]
             result.append(new_row)
-    
-    with open(output, mode='w', newline='') as file:
+
+    # Write results to the output CSV file
+    with open(output_file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         for row in result:
             writer.writerow(row)
