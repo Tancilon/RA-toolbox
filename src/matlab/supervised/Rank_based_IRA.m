@@ -1,26 +1,5 @@
 clear
 
-% addpath(genpath('D:\文件\毕设\RA算法\'));
-% addpath(genpath('D:\文件\毕设\RA算法\RA\ext-CSRA2\singleworker\'));
-% addpath(genpath('D:\文件\毕设\RA算法\order_worker\Sim\'));
-    
-
-%duke
-% sim_path = 'D:\RA_ReID\ReID_Dataset\DukeMTMC-ReID\test\dukemtmcreid_6workers.mat';
-% query_label_path = 'D:\RA_ReID\ReID_Dataset\DukeMTMC-ReID\label&cam\bdb-dukemtmcreid-query_id-.mat';
-% gallery_label_path = 'D:\RA_ReID\ReID_Dataset\DukeMTMC-ReID\label&cam\bdb-dukemtmcreid-gallery_idtest-.mat';
-% cam_gallery_path = 'D:\RA_ReID\ReID_Dataset\DukeMTMC-ReID\label&cam\bdb-dukemtmcreid-gallery_camidstest-.mat';
-% cam_query_path = 'D:\RA_ReID\ReID_Dataset\DukeMTMC-ReID\label&cam\bdb-dukemtmcreid-query_camids-.mat';
-% datasetname = 'duke';
-
-%detected
-% sim_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_detected\test\cuhk03detected_6workers.mat';
-% query_label_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_detected\label&cam\bdb-cuhk03detected-query_id-.mat';
-% gallery_label_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_detected\label&cam\bdb-cuhk03detected-gallery_idtest-.mat';
-% cam_gallery_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_detected\label&cam\bdb-cuhk03detected-gallery_camidstest-.mat';
-% cam_query_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_detected\label&cam\bdb-cuhk03detected-query_camids-.mat';
-% datasetname = 'detected';
-
 %label
 sim_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_labeled\test\cuhk03labeled_6workers.mat';
 query_label_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_labeled\label&cam\bdb-cuhk03labeled-query_id-.mat';
@@ -28,14 +7,6 @@ gallery_label_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_labeled\label&cam\bdb-cuhk0
 cam_gallery_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_labeled\label&cam\bdb-cuhk03labeled-gallery_camidstest-.mat';
 cam_query_path = 'D:\RA_ReID\ReID_Dataset\CUHK03_labeled\label&cam\bdb-cuhk03labeled-query_camids-.mat';
 datasetname = 'label';
-
-%market
-% sim_path = 'D:\RA_ReID\ReID_Dataset\Market1501\test\market1501_6workers.mat';
-% query_label_path = 'D:\RA_ReID\ReID_Dataset\Market1501\label&cam\bdb-market1501-query_id-.mat';
-% gallery_label_path = 'D:\RA_ReID\ReID_Dataset\Market1501\label&cam\bdb-market1501-gallery_idtest-.mat';
-% cam_gallery_path = 'D:\RA_ReID\ReID_Dataset\Market1501\label&cam\bdb-market1501-gallery_camidstest-.mat';
-% cam_query_path = 'D:\RA_ReID\ReID_Dataset\Market1501\label&cam\bdb-market1501-query_camids-.mat';
-% datasetname = 'market';
 
 
 
@@ -56,13 +27,7 @@ cam_query0 = importdata(cam_query_path);
 % cam_query = cam_query0(1685:3368);
 cam_query = cam_query0;
 cam_query = cam_query';
-%query_label = importdata('D:\文件\毕设\RA算法\RA\dataset\market1501\groundtruth\queryIDtest.mat');
-%gallery_label = importdata('D:\文件\毕设\RA算法\RA\dataset\market1501\groundtruth\galleryID.mat');
-%cam_gallery = importdata('D:\文件\毕设\RA算法\RA\dataset\market1501\groundtruth\galleryCAM.mat');
-%cam_query1 = importdata('D:\文件\毕设\RA算法\new_ReID\feat_norm_result\bdb-market1501-query_camids-.mat'');
-%cam_query = cam_query1(701:1400);
-%cuhk03-1400;duke-2228;market-3368  
-%  701:1400  1115:2228   1685:3368
+
 
 iteration = 1; % Number of interaction rounds
 K = 5; % Interaction per round
