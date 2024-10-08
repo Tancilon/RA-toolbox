@@ -12,21 +12,22 @@ import pandas as pd
 import csv
 import scorefunc as sc
 
-def CombMAXAgg(input_list):
+def CombANZAgg(input_list):
 
     num_voters = input_list.shape[0]
     num_items = input_list.shape[1]
     item_comb_score = np.zeros(num_items)
     item_score = np.zeros((num_voters,num_items))
 # This score_list updates rank to score with different ways
-    item_score = sc.LinearAgg(input_list) 
+    item_score = sc.linearagg(input_list)
     print(item_score)
     
     for i in range(num_items):
         item_min_score = np.zeros(num_voters)
         for k in range(num_voters):
             item_min_score[k] = item_score[k,i]
-        item_comb_score[i] = max(item_min_score)
+# CombANZ is selection of original rankings, in this case, is all.
+        item_comb_score[i] = (1 / num_voters) * sum(item_min_score)
     first_row = item_comb_score
 # 进行排序并返回排序后的列索引
     sorted_indices = np.argsort(first_row)[::-1]
@@ -39,7 +40,7 @@ def CombMAXAgg(input_list):
     return result
 
 
-def CombMAX(input, output):
+def CombANZ(input, output):
     df = pd.read_csv(input,header=None)
     df.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']
 
@@ -85,7 +86,7 @@ def CombMAX(input, output):
 
             input_list[voter_index, item_index] = item_rank
         # 调用函数，获取排名信息
-        rank = CombMAXAgg(input_list)
+        rank = CombANZAgg(input_list)
 
         # 将结果添加到result_df中
         for item_code_index, item_rank in enumerate(rank):   

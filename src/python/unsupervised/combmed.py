@@ -1,4 +1,4 @@
-# Reference: Mean
+# Reference: Comb* family
 # fsw, Tancilon：20231018
 # Define the input to the algorithm as a csv file format: Query | Voter name | Item Code | Item Rank
 #      - Query does not require consecutive integers starting from 1.
@@ -12,22 +12,22 @@ import pandas as pd
 import csv
 import scorefunc as sc
 
-def MeanAgg(input_list):
+def CombMEDAgg(input_list):
 
     num_voters = input_list.shape[0]
     num_items = input_list.shape[1]
-    item_mean_score = np.zeros(num_items)
+    item_comb_score = np.zeros(num_items)
     item_score = np.zeros((num_voters,num_items))
-
 # This score_list updates rank to score with different ways
-    item_score = sc.LinearAgg(input_list)
+    item_score = sc.linearagg(input_list)
+    print(item_score)
     
     for i in range(num_items):
-        item_voters_score = np.zeros(num_voters)
+        item_min_score = np.zeros(num_voters)
         for k in range(num_voters):
-            item_voters_score[k] = item_score[k,i]
-        item_mean_score[i] = np.mean(item_voters_score)
-    first_row = item_mean_score
+            item_min_score[k] = item_score[k,i]
+        item_comb_score[i] = (1 / num_voters) * sum(item_min_score)
+    first_row = item_comb_score
 # 进行排序并返回排序后的列索引
     sorted_indices = np.argsort(first_row)[::-1]
 
@@ -39,7 +39,7 @@ def MeanAgg(input_list):
     return result
 
 
-def Mean(input, output):
+def CombMED(input, output):
     df = pd.read_csv(input,header=None)
     df.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']
 
@@ -85,7 +85,7 @@ def Mean(input, output):
 
             input_list[voter_index, item_index] = item_rank
         # 调用函数，获取排名信息
-        rank = MeanAgg(input_list)
+        rank = CombMEDAgg(input_list)
 
         # 将结果添加到result_df中
         for item_code_index, item_rank in enumerate(rank):   

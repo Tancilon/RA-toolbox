@@ -19,7 +19,7 @@ def CombMNZAgg(input_list):
     item_comb_score = np.zeros(num_items)
     item_score = np.zeros((num_voters,num_items))
 # This score_list updates rank to score with different ways
-    item_score = sc.LinearAgg(input_list) 
+    item_score = sc.linearagg(input_list)
     print(item_score)
     
     for i in range(num_items):
