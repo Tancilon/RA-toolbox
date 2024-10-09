@@ -35,49 +35,52 @@ Tancilon: 20231226
         3) 训练集和测试集的Voter相同
 """
 
-import numpy as np
-import pandas as pd
 import csv
-import time
-from Evaluation import Evaluation
-from tqdm import tqdm
-import pickle
 
-class WeightedBorda():
+import numpy as np
+from tqdm import tqdm
+
+from evaluation import Evaluation
+
+
+class WeightedBorda:
     """
     hyper-parameters:
         topk: 精度计算时topk的设置, 若不设置, 则默认为一个query下相关性文档的数量
     """
-    def __init__(self, topK = None, is_partial_list = True):
+
+    def __init__(self, topk=None, is_partial_list=True):
         self.weights = None
         self.average_weight = None
         self.voter_name_mapping = None
         self.voter_name_reverse_mapping = None
         self.voter_num = None
         self.query_mapping = None
-        self.topk = topK
+        self.topk = topk
         self.is_partial_list = is_partial_list
 
-
-    def partialToFull(self, rank_base_data_matrix):
+    @staticmethod
+    def partialtofull(rank_base_data_matrix):
         # 扩充为full list的方式是将未排序的项目全部并列放在最后一名
         num_voters = rank_base_data_matrix.shape[0]
 
         for k in range(num_voters):
             if np.isnan(rank_base_data_matrix[k]).all():
                 # 处理全为 NaN 的切片
-                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan = rank_base_data_matrix.shape[1])
+                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan=rank_base_data_matrix.shape[1])
             else:
                 max_rank = np.nanmax(rank_base_data_matrix[k])
-                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan = max_rank + 1)
+                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan=max_rank + 1)
 
         return rank_base_data_matrix
+
     """
     return:
         score_base_data_matrix: voter * item 存储Borda分数
         rel_data_matrix: 1 * item 存储item的相关性
     """
-    def convertToMatrix(self, base_data, rel_data = None):
+
+    def convert_to_matrix(self, base_data, rel_data=None):
         unique_items = base_data['Item Code'].unique()
         item_num = len(unique_items)
         item_mapping = {name: i for i, name in enumerate(unique_items)}
@@ -94,14 +97,14 @@ class WeightedBorda():
             item_index = item_mapping[item_code]
             rank_base_data_matrix[voter_index, item_index] = item_rank
 
-        if (self.is_partial_list == True):
-            rank_base_data_matrix = self.partialToFull(rank_base_data_matrix)
+        if self.is_partial_list:
+            rank_base_data_matrix = self.partialtofull(rank_base_data_matrix)
 
         for k in range(self.voter_num):
             for i in range(item_num):
                 score_base_data_matrix[k, i] = item_num - rank_base_data_matrix[k, i]
 
-        if (rel_data is None):
+        if rel_data is None:
             return score_base_data_matrix, item_mapping
         else:
             for _, row in rel_data.iterrows():
@@ -113,14 +116,12 @@ class WeightedBorda():
 
             return score_base_data_matrix, rel_data_matrix, item_mapping
 
-
-
     def train(self, train_base_data, train_rel_data):
         """
         Data process
         """
-        train_base_data.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']
-        train_rel_data.columns= ['Query', '0', 'Item Code', 'Relevance']
+        train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
+        train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
         unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
@@ -131,7 +132,7 @@ class WeightedBorda():
         self.query_mapping = {name: i for i, name in enumerate(unique_queries)}
 
         self.weights = np.zeros((len(unique_queries), self.voter_num))
-        
+
         """
         Consider each query
         """
@@ -145,17 +146,17 @@ class WeightedBorda():
             """
             转为二维Numpy矩阵
             """
-            base_data_matrix, rel_data_matrix, _ = self.convertToMatrix(base_data, rel_data)
+            base_data_matrix, rel_data_matrix, _ = self.convert_to_matrix(base_data, rel_data)
             """
             计算每一个voter的性能
             """
             evaluation = Evaluation()
             for voter_idx in range(self.voter_num):
-                if (self.topk is None):
+                if self.topk is None:
                     topk = np.sum(rel_data_matrix > 0)
                 else:
                     topk = self.topk
-                voter_w = evaluation.compute_P_s(base_data_matrix[voter_idx, :], rel_data_matrix, topk) * self.voter_num
+                voter_w = evaluation.compute_p_s(base_data_matrix[voter_idx, :], rel_data_matrix, topk) * self.voter_num
                 # voter_w = evaluation.compute_AP_s(base_data_matrix[voter_idx, :], rel_data_matrix, topk)
 
                 query_idx = self.query_mapping[query]
@@ -164,30 +165,31 @@ class WeightedBorda():
         """
         下面算出针对所有Query的平均权重
         """
-        self.average_weight = np.mean(self.weights, axis = 0)
+        self.average_weight = np.mean(self.weights, axis=0)
 
     """
     using_average:
         1.选择使用的权重参数是否是平均权重
         2.当using_average = false 时, 用于测试集的query和训练集的query相同的情况
     """
-    def test(self, test_data, test_output_loc, using_average_w = True):
-        test_data.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']    
+
+    def test(self, test_data, test_output_loc, using_average_w=True):
+        test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         unique_test_queries = test_data['Query'].unique()
-         # 创建一个空的DataFrame来存储结果
+        # 创建一个空的DataFrame来存储结果
 
         with open(test_output_loc, mode='w', newline='') as file:
             writer = csv.writer(file)
 
             for query in tqdm(unique_test_queries):
-                query_data = test_data[test_data['Query'] == query] 
-                query_data_matrix, item_code_mapping = self.convertToMatrix(query_data)
+                query_data = test_data[test_data['Query'] == query]
+                query_data_matrix, item_code_mapping = self.convert_to_matrix(query_data)
                 item_code_reverse_mapping = {v: k for k, v in item_code_mapping.items()}
 
-                if (using_average_w == True):
+                if using_average_w:
                     score_list = np.dot(self.average_weight, query_data_matrix)
                 else:
-                    if (query not in self.query_mapping):
+                    if query not in self.query_mapping:
                         score_list = np.dot(self.average_weight, query_data_matrix)
                     else:
                         query_id = self.query_mapping[query]
@@ -197,76 +199,4 @@ class WeightedBorda():
                 for rank_index, item_id in enumerate(rank_list):
                     item_code = item_code_reverse_mapping[item_id]
                     new_row = [query, item_code, (rank_index + 1)]
-                    writer.writerow(new_row) 
-
-
-
-if __name__ == '__main__':
-    print('Load training data...')
-    start = time.perf_counter()
-
-    """
-    训练集和测试集的文件路径
-    """
-    # train_rel_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rel_train.csv'
-    # train_base_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rank_train.csv'
-    # test_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rank_test.csv'
-    # test_output_loc = r'test.csv'
-
-
-    """
-    DukeMTMC_VideoReID
-    """
-
-    # train_rel_loc = r'D:\RA_ReID\ReID_Dataset\DukeMTMC_VideoReID\train\top300-PSTA-DukeMTMC_VideoReID-train-rel.csv'
-    # train_base_loc = r'D:\RA_ReID\ReID_Dataset\DukeMTMC_VideoReID\train\top300-DukeMTMC_VideoReID_train_6worker_sim.csv'
-    # test_loc = r'D:\RA_ReID\ReID_Dataset\DukeMTMC_VideoReID\test\DukeMTMC_VideoReID_6worker_sim.csv'
-    # test_output_loc = r'result_wBorda_DukeMTMC_VideoReID_6worker_sim.csv'
-    # save_model_loc = r'DukeMTMC_VideoReID_wBorda.pkl'
-
-
-
-    train_rel_loc = r'/project/zhanghong/Tancilon/MovieLens1m/m1m-top20-train-rel.csv'
-    train_base_loc = r'/project/zhanghong/Tancilon/MovieLens1m/m1m-top20-train.csv'
-    test_loc = r'/project/zhanghong/Tancilon/MovieLens1m/mlm-top20-test.csv'
-    test_output_loc = r'/project/zhanghong/Tancilon/Result/m1m/result-wBorda-mlm-top20-test.csv'
-    save_model_loc = r'/project/zhanghong/Tancilon/Result/m1m/m1m_wBorda.pkl'
-
-
-    """
-    读文件
-    """
-    train_rel_data = pd.read_csv(train_rel_loc, header=None)
-    train_base_data = pd.read_csv(train_base_loc, header=None)
-    test_data = pd.read_csv(test_loc, header=None) 
-
-    """
-    Run
-    """
-    wBorda = WeightedBorda(topK=10)
-    wBorda.train(train_base_data, train_rel_data)
-
-    end = time.perf_counter()
-    print('train_time:', end - start)
-
-    """
-    save the model
-    """
-    print("Saving model...")
-    with open(save_model_loc, 'wb') as f:
-        pickle.dump(wBorda, f)
-
-
-    print('Test...')
-    start = time.perf_counter()
-    wBorda.test(test_data, test_output_loc,using_average_w=False)
-    end = time.perf_counter()
-    print('test_time:', end - start)
-
-
-    """
-    加载模型
-    """
-    # with open(r'C:\Users\2021\Desktop\Supervised RA\duke_wBorda.pkl', 'rb') as f:
-    #     model = pickle.load(f)
-    # print(model.average_weight)
+                    writer.writerow(new_row)

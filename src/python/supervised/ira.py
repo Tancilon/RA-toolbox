@@ -2,8 +2,7 @@ from enum import Enum, auto
 
 import h5py
 import numpy as np
-import scipy
-from scipy.io import loadmat
+from scipy.io import loadmat, savemat
 
 
 class MethodType(Enum):
@@ -11,14 +10,14 @@ class MethodType(Enum):
     SCORE = auto()
 
 
-def rank_based_ira(datasetname, inputfileAddress, K, iteration):
-    functionName = f"IRA_R({K},{iteration})"
+def rank_based_ira(datasetname, inputfileaddress, K, iteration):
+    function_name = f"IRA_R({K},{iteration})"
 
-    with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
+    with h5py.File(inputfileaddress, 'r') as f:
         # 读取数据集
         sim = f['workerlist_sim'][:].T
 
-    print(f"{functionName} Running {datasetname}")
+    print(f"{function_name} Running {datasetname}")
 
     query_label, gallery_label, cam_gallery, cam_query = get_eval_file(datasetname)
 
@@ -30,7 +29,6 @@ def rank_based_ira(datasetname, inputfileAddress, K, iteration):
     query_label = np.array(query_label_data['query_label']).squeeze()  # 提取并转换为 numpy 数组
     gallery_label = np.array(gallery_label_data['gallery_label']).squeeze()  # 提取并转换为 numpy 数组
 
-
     error_rate = 0.02  # Interaction error rate
 
     rankernum = sim.shape[0]
@@ -39,9 +37,8 @@ def rank_based_ira(datasetname, inputfileAddress, K, iteration):
 
     ranklist = np.argsort(-sim, axis=2)
 
-
-    feedtrue_G = np.zeros((querynum, gallerynum))
-    feeded_G = np.zeros((querynum, gallerynum))
+    feedtrue_g = np.zeros((querynum, gallerynum))
+    feeded_g = np.zeros((querynum, gallerynum))
 
     weight = np.ones((querynum, rankernum))
 
@@ -58,36 +55,36 @@ def rank_based_ira(datasetname, inputfileAddress, K, iteration):
         new_weight = np.zeros((querynum, rankernum))
 
         for q in range(querynum):
-            Qlabel = query_label[q]
+            qlabel = query_label[q]
             sed = 0
             now_num = 1
-            RT = []
+            rt = []
             while sed < K:
-                if feeded_G[q, total_ranklist[q, now_num - 1]] == 0:
+                if feeded_g[q, total_ranklist[q, now_num - 1]] == 0:
                     sed += 1
-                    RT.append(total_ranklist[q, now_num - 1])
-                    feeded_G[q, total_ranklist[q, now_num - 1]] = 1
+                    rt.append(total_ranklist[q, now_num - 1])
+                    feeded_g[q, total_ranklist[q, now_num - 1]] = 1
                 now_num += 1
 
-            RT_label = gallery_label[RT]
-            scored_G = np.where(RT_label == Qlabel)[0]
+            rt_label = gallery_label[rt]
+            scored_g = np.where(rt_label == qlabel)[0]
             for j in range(K):
-                if j in scored_G:
+                if j in scored_g:
                     if np.random.rand() > error_rate:
-                        feedtrue_G[q, RT[j]] = 10
+                        feedtrue_g[q, rt[j]] = 10
                     else:
-                        feedtrue_G[q, RT[j]] = -10
+                        feedtrue_g[q, rt[j]] = -10
                 else:
                     if np.random.rand() > error_rate:
-                        feedtrue_G[q, RT[j]] = -10
+                        feedtrue_g[q, rt[j]] = -10
                     else:
-                        feedtrue_G[q, RT[j]] = 10
+                        feedtrue_g[q, rt[j]] = 10
 
-            scored_G = np.where(feedtrue_G[q, :] == 10)[0]
+            scored_g = np.where(feedtrue_g[q, :] == 10)[0]
             for j in range(rankernum):
-                ranker_RT = ranklist[j, q, :]
-                for k in scored_G:
-                    x = np.where(ranker_RT == k)[0][0]
+                ranker_rt = ranklist[j, q, :]
+                for k in scored_g:
+                    x = np.where(ranker_rt == k)[0][0]
                     score = np.ceil(x / K)
                     if score == 0:
                         continue
@@ -102,26 +99,21 @@ def rank_based_ira(datasetname, inputfileAddress, K, iteration):
             for k in range(rankernum):
                 new_sim[j, :] += sim[k, j, :] * weight[j, k]
 
-        new_sim += feedtrue_G
+        new_sim += feedtrue_g
 
         total_ranklist = np.argsort(-new_sim, axis=1)
         total_rank = np.argsort(total_ranklist, axis=1)
 
-        print(total_rank.shape)
         res = total_rank.T
-
-
-    return functionName, total_rank, res
-
+    return function_name, total_rank, res
 
 
 def score_based_ira(datasetname, inputfile_address, K, iteration):
     function_name = f"IRA_S({K},{iteration})"
 
-    with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
+    with h5py.File(inputfile_address, 'r') as f:
         # 读取数据集
         sim = f['workerlist_sim'][:].T
-
 
     query_label, gallery_label, cam_gallery, cam_query = get_eval_file(datasetname)
 
@@ -140,8 +132,8 @@ def score_based_ira(datasetname, inputfile_address, K, iteration):
     querynum = sim.shape[1]
     gallerynum = sim.shape[2]
 
-    feedtrue_G = np.zeros((querynum, gallerynum))
-    feeded_G = np.zeros((querynum, gallerynum))
+    feedtrue_g = np.zeros((querynum, gallerynum))
+    feeded_g = np.zeros((querynum, gallerynum))
     weight = np.ones((querynum, rankernum))
 
     # get origin rank
@@ -157,36 +149,36 @@ def score_based_ira(datasetname, inputfile_address, K, iteration):
         new_weight = np.zeros((querynum, rankernum))
 
         for q in range(querynum):
-            Qlabel = query_label[q]
+            qlabel = query_label[q]
             sed = 0
             now_num = 0
-            RT = []
+            rt = []
             while sed < K:
-                if feeded_G[q, total_ranklist[q, now_num]] == 0:
+                if feeded_g[q, total_ranklist[q, now_num]] == 0:
                     sed += 1
-                    RT.append(total_ranklist[q, now_num])
-                    feeded_G[q, total_ranklist[q, now_num]] = 1
+                    rt.append(total_ranklist[q, now_num])
+                    feeded_g[q, total_ranklist[q, now_num]] = 1
                 now_num += 1
 
-            RT_label = gallery_label[RT]
-            scored_G = np.where(RT_label == Qlabel)[0]
+            rt_label = gallery_label[rt]
+            scored_g = np.where(rt_label == qlabel)[0]
 
             for j in range(K):
-                if j in scored_G:
+                if j in scored_g:
                     if np.random.rand() > error_rate:
-                        feedtrue_G[q, RT[j]] = 10
+                        feedtrue_g[q, rt[j]] = 10
                     else:
-                        feedtrue_G[q, RT[j]] = -10
+                        feedtrue_g[q, rt[j]] = -10
                 else:
                     if np.random.rand() > error_rate:
-                        feedtrue_G[q, RT[j]] = -10
+                        feedtrue_g[q, rt[j]] = -10
                     else:
-                        feedtrue_G[q, RT[j]] = 10
+                        feedtrue_g[q, rt[j]] = 10
 
-            scored_G = np.where(feedtrue_G[q, :] == 10)[0]
-            if scored_G.size > 1:
-                anno_G = sim[:, q, scored_G].reshape(rankernum, scored_G.size)
-                std_w = np.std(anno_G, axis=1)
+            scored_g = np.where(feedtrue_g[q, :] == 10)[0]
+            if scored_g.size > 1:
+                anno_g = sim[:, q, scored_g].reshape(rankernum, scored_g.size)
+                std_w = np.std(anno_g, axis=1)
                 max_std = np.max(std_w)
                 std_w = std_w / max_std
                 new_weight[q, :] += 1.0 / std_w
@@ -201,23 +193,21 @@ def score_based_ira(datasetname, inputfile_address, K, iteration):
             for k in range(rankernum):
                 new_sim[j, :] += sim[k, j, :] * weight[j, k]
 
-        new_sim += feedtrue_G
+        new_sim += feedtrue_g
         total_ranklist = np.argsort(-new_sim, axis=1)
         total_rank = np.argsort(total_ranklist, axis=1)
         res = total_rank.T
-
-
     return function_name, total_rank, res
 
 
-def run_ira(mode = MethodType.RANK):
-    inputfileAddress = r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat"
+def run_ira(mode=MethodType.RANK):
+    inputfile_address = r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat"
     if mode == MethodType.RANK:
-        _, total_rank, _ = rank_based_ira("cuhk03detected", inputfileAddress, 3, 1)
-        scipy.io.savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'res': total_rank})
+        _, total_rank, _ = rank_based_ira("cuhk03detected", inputfile_address, 3, 1)
+        savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'res': total_rank})
     elif mode == MethodType.SCORE:
-        _, total_rank, _ = score_based_ira("cuhk03detected", inputfileAddress, 3, 1)
-        scipy.io.savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'res': total_rank})
+        _, total_rank, _ = score_based_ira("cuhk03detected", inputfile_address, 3, 1)
+        savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'res': total_rank})
 
 
 def get_eval_file(datasetname):
@@ -235,9 +225,12 @@ def get_eval_file(datasetname):
 
     elif datasetname == "DukeMTMC_VideoReID":
         query_label_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-query_id-.mat"
-        gallery_label_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-gallery_idtest-.mat"
-        cam_gallery_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-gallery_camidstest-.mat"
-        cam_query_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-query_camids-.mat"
+        gallery_label_path = (r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID"
+                              r"-gallery_idtest-.mat")
+        cam_gallery_path = (r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID"
+                            r"-gallery_camidstest-.mat")
+        cam_query_path = (r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-query_camids"
+                          r"-.mat")
 
     elif datasetname == "dukemtmcreid":
         query_label_path = r"D:\RA_ReID\Person-ReID\label&cam\dukemtmcreid\bdb-dukemtmcreid-query_id-.mat"
@@ -264,5 +257,6 @@ def get_eval_file(datasetname):
         cam_query_path = ""
 
     return query_label_path, gallery_label_path, cam_gallery_path, cam_query_path
+
 
 run_ira(MethodType.SCORE)

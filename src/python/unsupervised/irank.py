@@ -1,14 +1,12 @@
 import h5py
 import numpy as np
-from scipy.io import loadmat, savemat
+from scipy.io import savemat
 
 
 def run_irank():
     """
     sim: voter * query * item
     """
-    # 加载数据
-    # sim = loadmat(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat")['workerlist_sim']
     # 使用 with 语句打开并读取 HDF5 文件
     with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
         # 读取数据集
@@ -24,9 +22,7 @@ def run_irank():
     rank = np.argsort(ranklist, axis=2)
 
     topk = itemnum
-    result = np.zeros((querynum, itemnum))
     superviserank = np.zeros((rankernum - 1, querynum, itemnum))
-    newsim = np.zeros((rankernum, querynum, itemnum))
 
     # 迭代三次
     for iteration in range(3):
@@ -40,25 +36,23 @@ def run_irank():
                 superviserank[:i, :, :] = rank[:i, :, :]
                 superviserank[i:rankernum, :, :] = rank[i + 1:rankernum + 1, :, :]
 
-            Dscore = 1.0 / superviserank
-            print(Dscore.shape)
-            DscoreTotal = np.sum(Dscore, axis=0)
-            print(DscoreTotal.shape)
-            Sresultlist = np.argsort(-DscoreTotal, axis=1)
-            # Sresult = np.argsort(Sresultlist, axis=2)
-            # Sresult = Sresult.reshape(querynum, itemnum)
-            Sresultlist = Sresultlist.reshape(querynum, itemnum)
+            dscore = 1.0 / superviserank
+            # print(dscore.shape)
+            dscoretotal = np.sum(dscore, axis=0)
+            # print(dscoretotal.shape)
+            sresultlist = np.argsort(-dscoretotal, axis=1)
+            sresultlist = sresultlist.reshape(querynum, itemnum)
 
             for k in range(querynum):
-                for l in range(topk):
-                    newsim[i, k, Sresultlist[k, l]] += 0.1
+                for ll in range(topk):
+                    newsim[i, k, sresultlist[k, ll]] += 0.1
 
         sim = newsim
         ranklist = np.argsort(-sim, axis=2)
         rank = np.argsort(ranklist, axis=2)
 
     finalsim = np.sum(sim, axis=0)
-    print(finalsim.shape)
+    # print(finalsim.shape)
     finalsim = finalsim.reshape(querynum, itemnum)
     result = np.argsort(-finalsim, axis=1)
     result = np.argsort(result, axis=1)
@@ -66,8 +60,4 @@ def run_irank():
     savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'result': result})
 
 
-
-
 run_irank()
-
-

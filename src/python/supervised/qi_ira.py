@@ -1,22 +1,15 @@
 import h5py
 import numpy as np
-import scipy
 from scipy.io import loadmat
 
 
-def run_qi_ira(datasetname, inputfileAddress, K, iteration):
-    functionName = f"QI-IRA({K},{iteration})"
-
-    print(f'QT_IRA Running {datasetname}')
-
+def run_qi_ira(datasetname, inputfileaddress, inter_k, iteration):
+    function_name = "qi-ira"
     error_rate = 0.02  # Interaction error rate
 
-
-    with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
+    with h5py.File(inputfileaddress, 'r') as f:
         # 读取数据集
         sim = f['workerlist_sim'][:].T
-
-    print(f"{functionName} Running {datasetname}")
 
     query_label, gallery_label, cam_gallery, cam_query = get_eval_file(datasetname)
 
@@ -48,44 +41,44 @@ def run_qi_ira(datasetname, inputfileAddress, K, iteration):
     for i in range(iteration):
         new_weight = np.zeros((querynum, rankernum))
         for q in range(querynum):
-            Qlabel = query_label[q]
+            qlabel = query_label[q]
             sed = 0
             now_num = 0
-            RT = []
+            rt = []
 
-            while sed < K:
+            while sed < inter_k:
                 if feeded[q, total_ranklist[q, now_num]] == 0:
                     sed += 1
-                    RT.append(total_ranklist[q, now_num])
+                    rt.append(total_ranklist[q, now_num])
                     feeded[q, total_ranklist[q, now_num]] = 1
                 now_num += 1
 
-            RT_label = gallery_label[RT]
-            feedback_P = np.where(RT_label == Qlabel)[0]
+            rt_label = gallery_label[rt]
+            feedback_p = np.where(rt_label == qlabel)[0]
 
-            for j in range(K):
-                if j in feedback_P:
+            for j in range(inter_k):
+                if j in feedback_p:
                     if np.random.rand() > error_rate:
-                        feedtrue[q, RT[j]] = 10
+                        feedtrue[q, rt[j]] = 10
                 else:
                     if np.random.rand() > error_rate:
-                        feedtrue[q, RT[j]] = -10
+                        feedtrue[q, rt[j]] = -10
 
-            feedback_P = np.where(feedtrue[q, :] == 10)[0]
-            feedback_N = np.where(feedtrue[q, :] == -10)[0]
+            feedback_p = np.where(feedtrue[q, :] == 10)[0]
+            feedback_n = np.where(feedtrue[q, :] == -10)[0]
 
-            if feedback_P.size > 0:
-                score_P = sim[:, q, feedback_P]
-                score_N = sim[:, q, feedback_N]
-                score_P = np.reshape(score_P, (rankernum, feedback_P.size))
-                score_N = np.reshape(score_N, (rankernum, feedback_N.size))
+            if feedback_p.size > 0:
+                score_p = sim[:, q, feedback_p]
+                score_n = sim[:, q, feedback_n]
+                score_p = np.reshape(score_p, (rankernum, feedback_p.size))
+                score_n = np.reshape(score_n, (rankernum, feedback_n.size))
 
-                S_P = np.sum(score_P, axis=1) / feedback_P.size
-                S_N = np.sum(score_N, axis=1) / feedback_N.size if feedback_N.size > 0 else np.zeros(rankernum)
+                s_p = np.sum(score_p, axis=1) / feedback_p.size
+                s_n = np.sum(score_n, axis=1) / feedback_n.size if feedback_n.size > 0 else np.zeros(rankernum)
 
-                S = S_P - S_N if feedback_N.size > 0 else S_P
+                s = s_p - s_n if feedback_n.size > 0 else s_p
 
-                new_weight[q, :] += S
+                new_weight[q, :] += s
 
         weight = weight * 0.1 + new_weight * 0.9
         for j in range(querynum):
@@ -101,8 +94,9 @@ def run_qi_ira(datasetname, inputfileAddress, K, iteration):
         total_rank = np.argsort(total_ranklist, axis=1)
 
         res = total_rank.T  # Transpose for final result
+    return function_name, total_rank, res
 
-    return functionName, total_rank, res
+
 def get_eval_file(datasetname):
     if datasetname == "cuhk03detected":
         query_label_path = r"D:\RA_ReID\Person-ReID\label&cam\cuhk03detected\bdb-cuhk03detected-query_id-.mat"
@@ -118,9 +112,12 @@ def get_eval_file(datasetname):
 
     elif datasetname == "DukeMTMC_VideoReID":
         query_label_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-query_id-.mat"
-        gallery_label_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-gallery_idtest-.mat"
-        cam_gallery_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-gallery_camidstest-.mat"
-        cam_query_path = r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-query_camids-.mat"
+        gallery_label_path = (r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID"
+                              r"-gallery_idtest-.mat")
+        cam_gallery_path = (r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID"
+                            r"-gallery_camidstest-.mat")
+        cam_query_path = (r"D:\RA_ReID\Person-ReID\label&cam\DukeMTMC_VideoReID\AGRL-DukeMTMC_VideoReID-query_camids"
+                          r"-.mat")
 
     elif datasetname == "dukemtmcreid":
         query_label_path = r"D:\RA_ReID\Person-ReID\label&cam\dukemtmcreid\bdb-dukemtmcreid-query_id-.mat"
@@ -147,7 +144,3 @@ def get_eval_file(datasetname):
         cam_query_path = ""
 
     return query_label_path, gallery_label_path, cam_gallery_path, cam_query_path
-
-inputfileAddress = r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat"
-_, total_rank, _ = run_qi_ira("cuhk03detected", inputfileAddress, 3, 1)
-scipy.io.savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'res': total_rank})

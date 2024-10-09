@@ -40,172 +40,168 @@ import numpy as np
 import pandas as pd
 import csv
 import time
-import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
 import pickle
-from Evaluation import Evaluation
+from evaluation import Evaluation
 
 """
 参考文献: Using Differential Evolution in order to create a personalized list of recommended items(2020)
 """
-def compute_AP(rank_list, rel_data, N, item_mapping):
 
+
+def compute_ap(rank_list, rel_data, n_value, item_mapping):
     relevant_items = []
     for _, row in rel_data.iterrows():
         rel = row['Relevance']
         item_name = row['Item Code']
-        if (rel > 0):
+        if rel > 0:
             item_id = item_mapping[item_name]
             relevant_items.append(item_id)
-
     """
     当不额外设置AP@N中N的数值时, 将N的数值取为所有相关的Item个数
     """
     relevant_num = len(relevant_items)
-    if (N == None):
-        N = relevant_num
-    sumP = 0
+    if n_value is None:
+        n_value = relevant_num
+    sum_p = 0
     """
     或许有更加高效的写法
     """
-    for n in range(N):
+    for n in range(n_value):
         count = 0
-        if (rank_list[n] not in relevant_items):
+        if rank_list[n] not in relevant_items:
             continue
-        for i in range(N):
-            if (rank_list[i] in relevant_items):
+        for i in range(n_value):
+            if rank_list[i] in relevant_items:
                 count += 1
         p_n = count / (n + 1)
-        sumP += p_n
+        sum_p += p_n
 
-    if (relevant_num == 0):
+    if relevant_num == 0:
         return 0
     else:
-        return sumP / relevant_num
-            
+        return sum_p / relevant_num
+
 
 """
 A: 初始排序构成的矩阵： item * voter 存储score
 N: 在计算AP@N时N的取值, AP--->average precision
 """
-def matrixFitnessFunction(A, P1, P1_fitness, P2, rel_list, N, item_mapping):
 
+
+def matrix_fitness_function(a_value, p1_value, p1_fitness, p2_value, rel_list, n_value):
     evaluation = Evaluation()
-    C2 = np.dot(A, P2)
-    NP = P2.shape[1]
+    c2_value = np.dot(a_value, p2_value)
+    np_value = p2_value.shape[1]
     """
     考虑每一个交叉变异后的新个体的性能
     """
-    if (N is None):
-        N = np.sum(rel_list > 0)
+    if n_value is None:
+        n_value = np.sum(rel_list > 0)
 
-    for i in range(NP):
-        item_column = C2[:, i]
+    for i in range(np_value):
+        item_column = c2_value[:, i]
         # 对item分数从高到低排序
         rank_list = np.argsort(item_column)[::-1] + 1
 
-        ap = evaluation.compute_AP_r(rank_list, rel_list, N)
-        # ap = compute_AP(rank_list, rel_data, N, item_mapping)
+        ap = evaluation.compute_ap_r(rank_list, rel_list, n_value)
         """
         新个体更好,则原来的个体被淘汰
         """
-        if (ap > P1_fitness[i]):
-            P1_fitness[i] = ap
-            P1[:, i] = P2[:, i] 
+        if ap > p1_fitness[i]:
+            p1_fitness[i] = ap
+            p1_value[:, i] = p2_value[:, i]
 
-    return P1_fitness, P1
-
-
-def DE(A, rel_data, max_iteration, CR, F, NP, D, N, item_mapping):
+    return p1_fitness, p1_value
 
 
-    rel_list = np.zeros(A.shape[0])
+def de(a_value, rel_data, max_iteration, cr_value, f_value, np_value, d_value, n_value, item_mapping):
+    rel_list = np.zeros(a_value.shape[0])
     for _, row in rel_data.iterrows():
         item_code = row['Item Code']
         item_rel = row['Relevance']
         item_id = item_mapping[item_code]
         rel_list[item_id] = item_rel
 
-
     """
     Generate Initial population matrix: voter * NP
     """
-    voter_num = A.shape[1]
-    P1 = np.empty((voter_num, NP))
-    #随机数上界与下界的设置
+    voter_num = a_value.shape[1]
+    p1_value = np.empty((voter_num, np_value))
+    # 随机数上界与下界的设置
     upperbound = 1
     lowerbound = 0
     for i in range(voter_num):
-        for j in range(NP):
-            P1[i, j] = random.uniform(lowerbound, upperbound)
-    #计算初始种群的适应度
-    C0 = np.dot(A, P1)
-    fitness = np.empty(NP)
+        for j in range(np_value):
+            p1_value[i, j] = random.uniform(lowerbound, upperbound)
+    # 计算初始种群的适应度
+    c0_val = np.dot(a_value, p1_value)
+    fitness = np.empty(np_value)
     evaluation = Evaluation()
-    if (N is None):
-        N = np.sum(rel_list > 0)
+    if n_value is None:
+        n_value = np.sum(rel_list > 0)
 
-    for i in range(NP):
-        item_column = C0[:, i]
+    for i in range(np_value):
+        item_column = c0_val[:, i]
         rank_list = np.argsort(item_column)[::-1] + 1
-        fitness[i] = evaluation.compute_AP_r(rank_list, rel_list, N)
+        fitness[i] = evaluation.compute_ap_r(rank_list, rel_list, n_value)
     """
     Evolution
     """
-    P2 = np.empty((voter_num, NP))
+    p2_val = np.empty((voter_num, np_value))
     iteration = 0
-    while (iteration < max_iteration):
-        for i in range(NP):    
+    while iteration < max_iteration:
+        for i in range(np_value):
             """
             随机选择3个互不相同的个体
             """
-            a = random.randint(0, NP - 1)
-            while (a == i):
-                a = random.randint(0, NP -1)
+            a = random.randint(0, np_value - 1)
+            while a == i:
+                a = random.randint(0, np_value - 1)
 
-            b = random.randint(0, NP - 1)
-            while (b == i or b == a):
-                b = random.randint(0, NP - 1)
-            
-            c = random.randint(0, NP - 1)
-            while (c == i or c == a or c == b):
-                c = random.randint(0, NP - 1)
+            b = random.randint(0, np_value - 1)
+            while b == i or b == a:
+                b = random.randint(0, np_value - 1)
+
+            c = random.randint(0, np_value - 1)
+            while c == i or c == a or c == b:
+                c = random.randint(0, np_value - 1)
 
             """
             产生一个随机参数, 确保新个体中至少有一个变异基因
             """
-            rnbr_i = random.randint(0, D - 1)
+            rnbr_i = random.randint(0, d_value - 1)
 
-            for j in range(D):
-                if (random.random() <= CR or j == rnbr_i):
+            for j in range(d_value):
+                if random.random() <= cr_value or j == rnbr_i:
                     """
                     变异
                     """
-                    P2[j, i] = P1[j, a] + F * (P1[j, b] - P1[j, c])
+                    p2_val[j, i] = p1_value[j, a] + f_value * (p1_value[j, b] - p1_value[j, c])
                 else:
                     """
                     交叉
                     """
-                    P2[j, i] = P1[j, i]
+                    p2_val[j, i] = p1_value[j, i]
 
         """
         评估与选择
         """
-        fitness, P1 = matrixFitnessFunction(A, P1, fitness, P2, rel_list, N, item_mapping)
+        fitness, p1_value = matrix_fitness_function(a_value, p1_value, fitness, p2_val, rel_list, n_value, item_mapping)
         iteration += 1
 
     """
     迭代结束后, 找到种群中最好的个体
     """
     max_index = np.argmax(fitness)
-    return P1[:, max_index]
+    return p1_value[:, max_index]
 
 
-class AggRankDE():
-    def __init__(self, NP = 50, max_iteration = 100, CR = 0.9, F = 0.5, type = 'rank', N = None):
+class AggRankDE:
+    def __init__(self, np_val=50, max_iteration=100, CR=0.9, F=0.5, type='rank', N=None):
         """
-        hyper-parameters:
+        hyperparameters:
             NP: Population
             max_iteration: Number of Iterations
             CR: Crossover's Probability range [0, 1]
@@ -213,7 +209,7 @@ class AggRankDE():
             type: rank or score --> default = rank (要么训练集和测试集都是rank, 要么训练集和测试集都为score)
             N: fitness function --> AP@N --> default = None 此时认为N是相关项目的数量
         """
-        self.NP = NP
+        self.NP = np_val
         self.max_iteration = max_iteration
         self.CR = CR
         self.F = F
@@ -227,7 +223,7 @@ class AggRankDE():
         self.query_mapping = None
 
     def convertToMatrix(self, base_data):
-        
+
         """
         转化后的item * voter 二维矩阵统一存储Item score
         """
@@ -235,7 +231,6 @@ class AggRankDE():
         item_num = len(unique_items)
         item_mapping = {name: i for i, name in enumerate(unique_items)}
         A = np.zeros((item_num, self.voter_num))
-
 
         for _, row in base_data.iterrows():
             voter_name = row['Voter Name']
@@ -249,7 +244,6 @@ class AggRankDE():
             elif (self.type == 'score'):
                 A[item_index, voter_index] = item_attribute
 
-        
         """
         对矩阵A按列进行归一化处理, 这里采用L2范数归一化
         (可能存在的问题: 不同的归一化技术是否会给之后的算法结果带来较大影响？)
@@ -261,15 +255,13 @@ class AggRankDE():
         normalized_A = A / column_norms_safe
         return normalized_A, item_mapping
 
-        
-
     def train(self, train_base_data, train_rel_data):
 
         """
         Data process
         """
-        train_base_data.columns = ['Query','Voter Name', 'Item Code', 'Item Attribute']
-        train_rel_data.columns= ['Query', '0', 'Item Code', 'Relevance']
+        train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Attribute']
+        train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
         unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
@@ -284,7 +276,7 @@ class AggRankDE():
         """
         Consider each query
         """
-        #debug
+        # debug
         # debug = 1
 
         for query in tqdm(unique_queries):
@@ -298,8 +290,7 @@ class AggRankDE():
             rel_data = train_rel_data[train_rel_data['Query'] == query]
 
             A, item_mapping = self.convertToMatrix(base_data)
-            w = DE(A, rel_data, self.max_iteration, self.CR, self.F, self.NP, self.voter_num, self.N, item_mapping)
-            
+            w = de(A, rel_data, self.max_iteration, self.CR, self.F, self.NP, self.voter_num, self.N, item_mapping)
 
             """
             存储当前Query训练出的权重向量
@@ -310,22 +301,23 @@ class AggRankDE():
         """
         下面算出针对所有Query的平均权重
         """
-        self.average_weight = np.mean(self.weights, axis = 0)
+        self.average_weight = np.mean(self.weights, axis=0)
 
     """
     using_average:
         1.选择使用的权重参数是否是平均权重
         2.当using_average = false 时, 用于测试集的query和训练集的query相同的情况, 主要针对推荐系统中排序聚合的情况
     """
-    def test(self, test_data, test_output_loc, using_average_w = True):
-        test_data.columns = ['Query','Voter Name', 'Item Code', 'Item Attribute']
+
+    def test(self, test_data, test_output_loc, using_average_w=True):
+        test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Attribute']
         unique_test_queries = test_data['Query'].unique()
 
         with open(test_output_loc, mode='w', newline='') as file:
             writer = csv.writer(file)
 
             for query in tqdm(unique_test_queries):
-                query_data = test_data[test_data['Query'] == query]          
+                query_data = test_data[test_data['Query'] == query]
 
                 A, item_code_mapping = self.convertToMatrix(query_data)
                 item_code_reverse_mapping = {v: k for k, v in item_code_mapping.items()}
@@ -338,15 +330,14 @@ class AggRankDE():
                     else:
                         query_id = self.query_mapping[query]
                         score_list = np.dot(self.weights[query_id, :], A.T)
-                
+
                 rank_list = np.argsort(score_list)[::-1]
-                
+
                 for rank_index, item_id in enumerate(rank_list):
                     item_code = item_code_reverse_mapping[item_id]
                     new_row = [query, item_code, (rank_index + 1)]
                     writer.writerow(new_row)
-                                
-                
+
 
 if __name__ == '__main__':
     print('Load training data...')
@@ -370,7 +361,6 @@ if __name__ == '__main__':
     # test_output_loc = r'result_AggRankDE_DukeMTMC_VideoReID_6worker_sim.csv'
     # save_model_loc = r'DukeMTMC_VideoReID_AggRankDE.pkl'
 
-
     """
     MARS
     """
@@ -392,11 +382,10 @@ if __name__ == '__main__':
     train_rel_data = pd.read_csv(train_rel_loc, header=None)
     train_base_data = pd.read_csv(train_base_loc, header=None)
 
-
     """
     Run
     """
-    aggRankDE = AggRankDE(max_iteration=500, N = 10)
+    aggRankDE = AggRankDE(max_iteration=500, N=10)
     aggRankDE.train(train_base_data, train_rel_data)
 
     end = time.perf_counter()
@@ -407,16 +396,11 @@ if __name__ == '__main__':
     with open(save_model_loc, 'wb') as f:
         pickle.dump(aggRankDE, f)
 
-    test_data = pd.read_csv(test_loc, header=None) 
-
+    test_data = pd.read_csv(test_loc, header=None)
 
     print('Test...')
     start = time.perf_counter()
-    aggRankDE.test(test_data, test_output_loc,using_average_w=False)
+    aggRankDE.test(test_data, test_output_loc, using_average_w=False)
     end = time.perf_counter()
 
     print('test_time:', end - start)
-
-
-
-

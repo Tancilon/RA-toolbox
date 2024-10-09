@@ -1,6 +1,7 @@
 import h5py
 import numpy as np
-import scipy.io
+from scipy.io import savemat
+
 
 def run_postndcg():
     # 使用 with 语句打开并读取 HDF5 文件
@@ -37,6 +38,7 @@ def run_postndcg():
         result[i, :] = rank[ndcgrank[0], i, :]
 
     # 保存结果到 .mat 文件
-    scipy.io.savemat('D:\LocalGit\RA-toolbox\py.mat', {'result': result})
+    savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'result': result})
+
 
 run_postndcg()
