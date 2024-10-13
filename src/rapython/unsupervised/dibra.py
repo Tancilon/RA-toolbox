@@ -1,6 +1,20 @@
+"""
+DIBRA Algorithm
+
+Authors:
+    tancilon
+Date:
+    2024-10-13
+"""
+
 import h5py
 import numpy as np
 from scipy.io import savemat
+from src.rapython.datatools import *
+
+
+def dibra_agg():
+    pass
 
 
 def run_dibra():
@@ -78,4 +92,35 @@ def run_dibra():
     savemat('D:/LocalGit/RA-toolbox/py.mat', {'result': result})
 
 
-run_dibra()
+def dibra(input_file_path, output_file_path):
+    """
+    Process the input CSV file to aggregate rankings and write the results to an output CSV file.
+    Parameters
+    ----------
+    input_file_path : str
+        Path to the input CSV file.
+    output_file_path : str
+        Path to the output CSV file.
+    """
+    df, unique_queries = csv_load(input_file_path)
+    # Create an empty DataFrame to store results
+    result = []
+
+    for query in unique_queries:
+        # Filter data for the current Query
+        query_data = df[df['Query'] == query]
+
+        item_code_reverse_mapping, _, _, _, input_lists = wtf_map(
+            query_data)
+
+        # Call function to get aggregated ranks
+        rank = dibra_agg(input_lists)
+
+        # Append results to the result list
+        for item_code_index, item_rank in enumerate(rank):
+            item_code = item_code_reverse_mapping[item_code_index]
+            new_row = [query, item_code, item_rank]
+            result.append(new_row)
+
+    # Write results to the output CSV file
+    save_as_csv(output_file_path, result)

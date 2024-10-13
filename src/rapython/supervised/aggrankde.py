@@ -1,6 +1,6 @@
 """
 UTF-8 
-python: 3.11.4
+rapython: 3.11.4
 
 参考文献: Aggregation of Rankings Using Metaheuristics in Recommendation Systems(2022)
 

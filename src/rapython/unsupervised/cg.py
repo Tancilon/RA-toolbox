@@ -1,14 +1,35 @@
-# Reference: competitive graph
-# fsw, Tancilon：20231020
-# Define the input to the algorithm as a csv file format: Query | Voter name | Item Code | Item Rank
-#      - Query does not require consecutive integers starting from 1.
-#      - Voter name and Item Code are allowed to be in String format.
-# Define the final output of the algorithm as a csv file format： Query | Item Code | Item Rank
-#      - Output is the rank information, not the score information
-# The smaller the Item Rank, the higher the rank.
+"""
+Competitive Graph Algorithm
+
+This module implements the competitive graph approach for rank aggregation.
+
+Authors:
+    fsw, tancilon
+Date:
+    2023-10-20
+
+Input Format:
+-------------
+The input to the algorithm should be in CSV file format with the following columns:
+- Query: Does not require consecutive integers starting from 1.
+- Voter Name: Allowed to be in string format.
+- Item Code: Allowed to be in string format.
+- Item Rank: Represents the rank given by each voter.
+
+Output Format:
+--------------
+The final output of the algorithm will be in CSV file format with the following columns:
+- Query: The same as the input.
+- Item Code: The same as the input.
+- Item Rank: The rank information (not the score information).
+  - Note: The smaller the Item Rank, the higher the rank.
+"""
+
 import numpy as np
-import pandas as pd
-import csv
+
+from src.rapython.datatools import *
+
+__all__ = ['cg']
 
 
 def cgagg(input_list):
@@ -80,11 +101,7 @@ def cg(input_file_path, output_file_path):
     -------
     None
     """
-    df = pd.read_csv(input_file_path, header=None)
-    df.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
-
-    # Get unique Query values
-    unique_queries = df['Query'].unique()
+    df, unique_queries = csv_load(input_file_path)
     # Create an empty DataFrame to store results
     result = []
 
@@ -92,36 +109,11 @@ def cg(input_file_path, output_file_path):
         # Filter data for the current Query
         query_data = df[df['Query'] == query]
 
-        # Get unique Item Code and Voter Name values, create mappings
-        unique_item_codes = query_data['Item Code'].unique()
-        unique_voter_names = query_data['Voter Name'].unique()
-
-        # Create reverse mappings
-        item_code_reverse_mapping = {i: code for i, code in enumerate(unique_item_codes)}
-        voter_name_reverse_mapping = {i: name for i, name in enumerate(unique_voter_names)}
-
-        # Create forward mappings
-        item_code_mapping = {v: k for k, v in item_code_reverse_mapping.items()}
-        voter_name_mapping = {v: k for k, v in voter_name_reverse_mapping.items()}
-
-        # Initialize a 2D array for voter-item rankings
-        num_voters = len(unique_voter_names)
-        num_items = len(unique_item_codes)
-        input_list = np.full((num_voters, num_items), np.nan)
-
-        # Fill the array with rankings
-        for index, row in query_data.iterrows():
-            voter_name = row['Voter Name']
-            item_code = row['Item Code']
-            item_rank = row['Item Rank']
-
-            voter_index = voter_name_mapping[voter_name]
-            item_index = item_code_mapping[item_code]
-
-            input_list[voter_index, item_index] = item_rank
+        item_code_reverse_mapping, _, _, _, input_lists = wtf_map(
+            query_data)
 
         # Call the aggregation function to get ranks
-        rank = cgagg(input_list)
+        rank = cgagg(input_lists)
 
         # Add results to the result list
         for item_code_index, item_rank in enumerate(rank):
@@ -129,8 +121,5 @@ def cg(input_file_path, output_file_path):
             new_row = [query, item_code, item_rank]
             result.append(new_row)
 
-    # Write results to the output CSV file
-    with open(output_file_path, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        for row in result:
-            writer.writerow(row)
+    # Write the results to the output CSV file
+    save_as_csv(output_file_path, result)

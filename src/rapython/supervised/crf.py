@@ -1,6 +1,6 @@
 """
 UTF-8 
-python: 3.11.4
+rapython: 3.11.4
 Tensorflow: 2.15.0
 
 参考文献: CRF framework for supervised preference aggregation(2013)
@@ -268,7 +268,7 @@ class CRF:
                             score_i -= self.weights[3 * k + 1] * (
                                     (max_rank - r_matrix[i, k]) * (max_rank + 1 - r_matrix[i, k]) / (max_rank * 2))
                             score_i += self.weights[3 * k + 2] * (
-                                        (r_matrix[i, k] - 1) * r_matrix[i, k] / (2 * max_rank))
+                                    (r_matrix[i, k] - 1) * r_matrix[i, k] / (2 * max_rank))
                     score_list[i] = score_i
 
                 rank_list = np.argsort(score_list)

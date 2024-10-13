@@ -2,7 +2,7 @@
 semi-supervised
 
 UTF-8 
-python: 3.11.4
+rapython: 3.11.4
 
 参考文献: Semi-supervised Ranking Aggregation(2008)
 Tancilon: 20240118
@@ -36,7 +36,6 @@ Tancilon: 20240118
         2) Item Rank数值越小, 排名越靠前
 """
 
-
 import cvxpy as cp
 import numpy as np
 import pandas as pd
@@ -46,7 +45,6 @@ import csv
 
 from tqdm import tqdm
 from scipy.stats import kendalltau
-
 
 
 class SSRA():
@@ -70,10 +68,10 @@ class SSRA():
         for k in range(num_voters):
             if np.isnan(rank_base_data_matrix[k]).all():
                 # 处理全为 NaN 的切片
-                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan = rank_base_data_matrix.shape[1])
+                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan=rank_base_data_matrix.shape[1])
             else:
                 max_rank = np.nanmax(rank_base_data_matrix[k])
-                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan = max_rank + 1)
+                rank_base_data_matrix[k] = np.nan_to_num(rank_base_data_matrix[k], nan=max_rank + 1)
 
         return rank_base_data_matrix
 
@@ -82,7 +80,8 @@ class SSRA():
         score_base_data_matrix: item * voter 存储Borda分数
         rel_data_matrix: 1 * item 存储item的相关性
     """
-    def convertToMatrix(self, base_data, rel_data = None):
+
+    def convertToMatrix(self, base_data, rel_data=None):
         unique_items = base_data['Item Code'].unique()
         item_num = len(unique_items)
         item_mapping = {name: i for i, name in enumerate(unique_items)}
@@ -101,7 +100,7 @@ class SSRA():
 
         if (self.is_partial_list == True):
             rank_base_data_matrix = self.partialToFull(rank_base_data_matrix)
-        
+
         self.rank_base_data_matrix = rank_base_data_matrix
 
         for k in range(self.voter_num):
@@ -120,10 +119,8 @@ class SSRA():
                 item_index = item_mapping[item_code]
                 rel_data_matrix[item_index] = item_relevance
 
-            score_base_data_matrix =  score_base_data_matrix.T
+            score_base_data_matrix = score_base_data_matrix.T
             return score_base_data_matrix, rel_data_matrix, item_mapping
-
-
 
     def get_norm_similarity(self):
         p = np.zeros(self.voter_num)
@@ -151,7 +148,7 @@ class SSRA():
         adjacency_matrix = np.zeros((num_items, num_items))
 
         max_differ = np.max(scores) - np.min(scores)
-        
+
         for i in range(num_items):
             for j in range(i + 1, num_items):
                 if i != j:
@@ -163,7 +160,6 @@ class SSRA():
 
         return adjacency_matrix
 
-
     def get_Laplacian(self):
         # 计算Borda count分数
         borda_scores = self.borda_count(self.rank_base_data_matrix)
@@ -174,9 +170,7 @@ class SSRA():
         D = np.diag(row_sums)
         L = D - W
 
-
         return L
-
 
     def regularize_to_positive_semidefinite_matrix(self, arr, regularization_param):
         n = arr.shape[0]  # 获取矩阵的维度
@@ -190,20 +184,20 @@ class SSRA():
 
         # 构建半正定矩阵
         positive_semidefinite_matrix = np.dot(L, L.T)
-        
-        return positive_semidefinite_matrix
 
+        return positive_semidefinite_matrix
 
     """
     alpha, beta: Hyperparameters, typically ranging from 0.01 to 0.1
     constraints_rate: The proportion of supervisory information used, ranging from 0 to 1. If it is 1, the method becomes fully supervised
     """
-    def train(self, train_base_data, train_rel_data, alpha = 0.03, beta = 0.1, constraints_rate = 0.3, is_partial_list = True):
+
+    def train(self, train_base_data, train_rel_data, alpha=0.03, beta=0.1, constraints_rate=0.3, is_partial_list=True):
         """
         Data process
         """
-        train_base_data.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']
-        train_rel_data.columns= ['Query', '0', 'Item Code', 'Relevance']
+        train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
+        train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
         unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
         self.is_partial_list = is_partial_list
@@ -213,7 +207,6 @@ class SSRA():
         self.query_mapping = {name: i for i, name in enumerate(unique_queries)}
         self.weights = np.zeros((len(unique_queries), self.voter_num))
 
-
         # count = 1
 
         for query in tqdm(unique_queries):
@@ -221,7 +214,6 @@ class SSRA():
             # if (count == 9):
             #     print('debug....')
             # count += 1
-
 
             base_data = train_base_data[train_base_data['Query'] == query]
             rel_data = train_rel_data[train_rel_data['Query'] == query]
@@ -242,8 +234,6 @@ class SSRA():
 
             L_prime = self.get_Laplacian()
 
-
-
             # 定义优化变量
             w = cp.Variable(p.shape[0])
 
@@ -251,16 +241,15 @@ class SSRA():
             if not np.all(np.linalg.eigvals(matrix) >= 0):
                 regularization_param = 0.01
                 matrix = self.regularize_to_positive_semidefinite_matrix(matrix, regularization_param)
-            
-            
+
             # print(np.linalg.eigvals(matrix))
             # if not np.all(np.linalg.eigvals(matrix) >= 0):
             #     print("debug...")
 
             matrix = cp.psd_wrap(matrix)
             # 定义目标函数
-            objective = cp.Minimize(cp.norm(w - p)**2 + alpha * cp.quad_form(w, matrix) + (beta/2) * cp.norm(w)**2)
-
+            objective = cp.Minimize(
+                cp.norm(w - p) ** 2 + alpha * cp.quad_form(w, matrix) + (beta / 2) * cp.norm(w) ** 2)
 
             # 定义约束条件
             constraints = []
@@ -273,14 +262,13 @@ class SSRA():
             constraints.append(w >= 0)
             constraints.append(cp.sum(w) == 1)
 
-
             # 设置问题
             problem = cp.Problem(objective, constraints)
 
             # 求解问题
-            problem.solve(solver = cp.SCS)
+            problem.solve(solver=cp.SCS)
 
-            query_idx = self.query_mapping[query]   
+            query_idx = self.query_mapping[query]
 
             self.weights[query_idx, :] = w.value
 
@@ -295,18 +283,16 @@ class SSRA():
         # 计算这些选定行的平均值
         self.average_weight = np.mean(filtered_weights, axis=0)
 
-        
-
-    def test(self, test_data, test_output_loc, using_average_w = True):
-        test_data.columns = ['Query','Voter Name', 'Item Code', 'Item Rank']    
+    def test(self, test_data, test_output_loc, using_average_w=True):
+        test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         unique_test_queries = test_data['Query'].unique()
-         # 创建一个空的DataFrame来存储结果
+        # 创建一个空的DataFrame来存储结果
 
         with open(test_output_loc, mode='w', newline='') as file:
             writer = csv.writer(file)
 
             for query in tqdm(unique_test_queries):
-                query_data = test_data[test_data['Query'] == query] 
+                query_data = test_data[test_data['Query'] == query]
                 query_data_matrix, item_code_mapping = self.convertToMatrix(query_data)
                 query_data_matrix = query_data_matrix.T
                 item_code_reverse_mapping = {v: k for k, v in item_code_mapping.items()}
@@ -324,12 +310,12 @@ class SSRA():
                 for rank_index, item_id in enumerate(rank_list):
                     item_code = item_code_reverse_mapping[item_id]
                     new_row = [query, item_code, (rank_index + 1)]
-                    writer.writerow(new_row) 
+                    writer.writerow(new_row)
 
 
 if __name__ == '__main__':
     print('Load training data...')
-    start = time.perf_counter()  
+    start = time.perf_counter()
 
     # train_rel_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rel_train.csv'
     # train_base_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rank_train.csv'
@@ -355,7 +341,6 @@ if __name__ == '__main__':
     train_rel_data = pd.read_csv(train_rel_loc, header=None)
     train_base_data = pd.read_csv(train_base_loc, header=None)
 
-
     """
     Run
     """
@@ -369,10 +354,9 @@ if __name__ == '__main__':
     with open(save_model_loc, 'wb') as f:
         pickle.dump(ssra, f)
 
-    test_data = pd.read_csv(test_loc, header=None) 
+    test_data = pd.read_csv(test_loc, header=None)
     print('Test...')
     ssra.test(test_data, test_output_loc)
-
 
     # with open(r'C:\Users\2021\Desktop\Supervised RA\MQ2008-agg-SSRA.pkl', 'rb') as f:
     #     model = pickle.load(f)

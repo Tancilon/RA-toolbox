@@ -1,53 +1,8 @@
-import csv
-import time
-
 import numpy as np
-import pandas as pd
 
+from src.rapython.datatools import *
 
-def partialtofull(input_list):
-    # 扩充为full list的方式是将未排序的项目全部并列放在最后一名
-    num_voters = input_list.shape[0]
-    list_numofitems = np.zeros(num_voters)
-
-    for k in range(num_voters):
-        max_rank = np.nanmax(input_list[k])
-        list_numofitems[k] = max_rank
-        input_list[k] = np.nan_to_num(input_list[k], nan=max_rank + 1)
-
-    return input_list, list_numofitems
-
-
-def wdf_map(query_data):
-    # Get the unique Item Code and Voter Name values and create a map indexed to integers
-    unique_item_codes = query_data['Item Code'].unique()
-    unique_voter_names = query_data['Voter Name'].unique()
-
-    # Establish a reverse mapping from integers to strings
-    int_to_item_map = {i: code for i, code in enumerate(unique_item_codes)}
-    int_to_voter_map = {i: name for i, name in enumerate(unique_voter_names)}
-
-    # Produces a string-to-integer mapping
-    item_to_int_map = {v: k for k, v in int_to_item_map.items()}
-    voter_to_int_map = {v: k for k, v in int_to_voter_map.items()}
-
-    # Create a two-dimensional Numpy array of Voter Name*Item Code, starting with a value of 0
-    num_voters = len(unique_voter_names)
-    num_items = len(unique_item_codes)
-    input_lists = np.full((num_voters, num_items), np.nan)
-
-    # Filling an array
-    for index, row in query_data.iterrows():
-        voter_name = row['Voter Name']
-        item_code = row['Item Code']
-        item_rank = row['Item Rank']
-
-        voter_index = voter_to_int_map[voter_name]
-        item_index = item_to_int_map[item_code]
-
-        input_lists[voter_index, item_index] = item_rank
-
-    return int_to_item_map, int_to_voter_map, item_to_int_map, voter_to_int_map, input_lists
+__all__ = ['mork_heuristic']
 
 
 def outranking_matrix(input_list):
@@ -187,18 +142,14 @@ def mork_heuristicagg(input_list):
 
 
 def mork_heuristic(input_file_path, output_file_path):
-    df = pd.read_csv(input_file_path, header=None)
-    df.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
-
-    unique_queries = df['Query'].unique()
-    start_time = time.perf_counter()
+    df, unique_queries = csv_load(input_file_path)
     result = []
 
     for query in unique_queries:
         query_data = df[df['Query'] == query]
-        int_to_item_map, int_to_voter_map, item_to_int_map, voter_to_int_map, input_lists = wdf_map(query_data)
+        int_to_item_map, int_to_voter_map, item_to_int_map, voter_to_int_map, input_lists = wtf_map(query_data)
 
-        full_input_lists, list_numofitems = partialtofull(input_lists)
+        full_input_lists, list_numofitems = partial_to_full(input_lists)
 
         item_ranked = mork_heuristicagg(full_input_lists)
 
@@ -208,11 +159,4 @@ def mork_heuristic(input_file_path, output_file_path):
             new_row = [query, item_code, item_rank]
             result.append(new_row)
 
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    print(f"程序运行时间：{elapsed_time}秒")
-
-    with open(output_file_path, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        for row in result:
-            writer.writerow(row)
+    save_as_csv(output_file_path, result)
