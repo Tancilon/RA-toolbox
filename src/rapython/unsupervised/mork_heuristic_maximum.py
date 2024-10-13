@@ -1,3 +1,17 @@
+"""
+Mork-H Algorithm
+
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Azzini, I., & Munda, G. (2020). A new approach for identifying the Kemeny median ranking. European Journal of Operational Research, 281(2), 388-401.
+
+Authors:
+    fsw, tancilon
+Date:
+    2024-9-18
+"""
 import numpy as np
 
 from src.rapython.datatools import *

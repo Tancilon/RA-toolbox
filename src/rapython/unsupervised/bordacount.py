@@ -2,6 +2,11 @@
 Borda Count Algorithm
 
 This module implements the Borda Count method for rank aggregation.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Borda, J. D. (1781). M'emoire sur les' elections au scrutin. Histoire de l'Acad'emie Royale des Sciences.
 
 Authors:
     fsw, tancilon

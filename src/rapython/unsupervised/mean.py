@@ -2,6 +2,11 @@
 Mean Algorithm
 
 This module implements the Mean method for rank aggregation.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Kaur, M., Kaur, P., & Singh, M. (2015, September). Rank aggregation using multi objective genetic algorithm. In 2015 1st International Conference on Next Generation Computing Technologies (NGCT) (pp. 836-840). IEEE.
 
 Authors:
     fsw, tancilon

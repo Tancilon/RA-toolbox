@@ -1,6 +1,12 @@
 """
 DIBRA Algorithm
 
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Akritidis, L., Fevgas, A., Bozanis, P., & Manolopoulos, Y. (2022). An unsupervised distance-based model for weighted rank aggregation with list pruning. Expert Systems with Applications, 202, 117435.
+
 Authors:
     tancilon
 Date:

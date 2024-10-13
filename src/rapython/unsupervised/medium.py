@@ -2,6 +2,11 @@
 Medium Algorithm
 
 This module implements the Medium method for rank aggregation.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Fagin, R., Kumar, R., & Sivakumar, D. (2003, June). Efficient similarity search and classification via rank aggregation. In Proceedings of the 2003 ACM SIGMOD international conference on Management of data (pp. 301-312).
 
 Authors:
     fsw, tancilon

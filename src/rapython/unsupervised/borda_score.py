@@ -1,5 +1,5 @@
 """
-borda_score.py
+Borda Score Algorithm
 
 This module provides an implementation of the rank aggregation algorithm
 using score rules. This implementation is based on the following reference:

@@ -1,3 +1,17 @@
+"""
+iRANk Algorithm
+
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Wei, F., Li, W., & Liu, S. (2010). iRANK: A rank‐learn‐combine framework for unsupervised ensemble ranking. Journal of the American Society for Information Science and Technology, 61(6), 1232-1243.
+
+Authors:
+    tancilon
+Date:
+    2024-10-11
+"""
 import h5py
 import numpy as np
 from scipy.io import savemat

@@ -2,6 +2,11 @@
 Reciprocal Rank Fusion (RRF) Algorithm
 
 This module implements the RRF method for rank aggregation.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Cormack, G. V., Clarke, C. L., & Buettcher, S. (2009, July). Reciprocal rank fusion outperforms condorcet and individual rank learning methods. In Proceedings of the 32nd international ACM SIGIR conference on Research and development in information retrieval (pp. 758-759).
 
 Authors:
     fsw, tancilon

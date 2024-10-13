@@ -1,7 +1,12 @@
 """
-Web Metasearch: Rank vs. Score Based Rank Aggregation Methods
+MC1-4 Algorithms
 
 This module implements the MC1-4 method for rank aggregation using the Markov Chain approach.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Dwork, C., Kumar, R., Naor, M., & Sivakumar, D. (2001, April). Rank aggregation methods for the web. In Proceedings of the 10th international conference on World Wide Web (pp. 613-622).
 
 Authors:
     tancilon

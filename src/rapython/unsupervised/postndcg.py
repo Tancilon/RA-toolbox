@@ -1,3 +1,17 @@
+"""
+PostNDCG Algorithm
+
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Fujita, S., Kobayashi, H., & Okumura, M. (2020). Unsupervised ensemble of ranking models for news comments using pseudo answers. In Advances in Information Retrieval: 42nd European Conference on IR Research, ECIR 2020, Lisbon, Portugal, April 14–17, 2020, Proceedings, Part II 42 (pp. 133-140). Springer International Publishing.
+
+Authors:
+    fsw, tancilon
+Date:
+    2024-9-18
+"""
 import h5py
 import numpy as np
 from scipy.io import savemat

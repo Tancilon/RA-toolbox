@@ -2,6 +2,11 @@
 Comb* Family Algorithm
 
 This module implements the Comb* family of algorithms for rank aggregation.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Fox, E., & Shaw, J. (1994). Combination of multiple searches. NIST special publication SP, 243-243.
 
 Authors:
     fsw, tancilon

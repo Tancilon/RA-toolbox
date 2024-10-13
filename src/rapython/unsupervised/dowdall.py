@@ -2,6 +2,11 @@
 Dowdall Algorithm
 
 This module implements the Dowdall method for rank aggregation.
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Reilly, B. (2002). Social choice in the south seas: Electoral innovation and the borda count in the pacific island countries. International Political Science Review, 23(4), 355-372.
 
 Authors:
     fsw, tancilon

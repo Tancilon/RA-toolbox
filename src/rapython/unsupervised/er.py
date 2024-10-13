@@ -1,3 +1,17 @@
+"""
+ER Algorithm
+
+This implementation is based on the following reference:
+
+Reference:
+-----------
+- Mohammadi, M., & Rezaei, J. (2020). Ensemble ranking: Aggregation of rankings produced by different multi-criteria decision-making methods. Omega, 96, 102254.
+
+Authors:
+    tancilon
+Date:
+    2024-10-13
+"""
 import h5py
 import numpy as np
 from scipy.io import savemat

@@ -1,3 +1,18 @@
+"""
+Aggregation Methods Module
+==========================
+
+This module provides functions to compute aggregated scores based on various
+ranking systems. The aggregation methods take a 2D array of rankings where each
+row corresponds to a voter and each column corresponds to a candidate. The module
+offers four types of aggregation:
+
+- Linear Aggregation: Adds a linear score for each rank.
+- Reciprocal Aggregation: Uses the reciprocal of the rank.
+- Power Aggregation: Applies an exponential function to ranks.
+- Logarithmic Aggregation: Uses logarithmic transformation of ranks.
+"""
+
 import math
 import numpy as np
 
