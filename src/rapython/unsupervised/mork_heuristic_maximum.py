@@ -23,7 +23,7 @@ def outranking_matrix(input_list):
     num_voters = input_list.shape[0]
     num_items = input_list.shape[1]
 
-    # 当items数量大于等于3时，计算出items之间的偏好，构建outranking矩阵
+    # When the number of items is greater than or equal to 3, calculate the preferences between items and construct an outranking matrix
     outrankingmatrix = np.zeros((num_items, num_items))
     if num_items >= 3:
         for v in range(num_voters):
