@@ -36,8 +36,6 @@ The `MC()` function takes `input_list` as the input ranking information, which i
 - Note: The input ranking accepts partial lists.
 """
 
-from enum import Enum, auto
-
 import numpy as np
 
 from src.rapython.datatools import *

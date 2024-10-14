@@ -13,23 +13,14 @@ Date:
     2024-10-13
 """
 
-import h5py
 import numpy as np
-from scipy.io import savemat
+
 from src.rapython.datatools import *
 
-
-def dibra_agg():
-    pass
+__all__ = ['dibra']
 
 
-def run_dibra():
-    with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
-        # 读取数据集
-        data = f['workerlist_sim'][:].T
-    # Parameters
-    topk = 10
-
+def dibra_agg(data, topk=10):
     # Get the size of the data matrix
     rankernum = data.shape[0]  # Equivalent to size(data, 1)
     querynum = data.shape[1]  # Equivalent to size(data, 2)
@@ -94,39 +85,29 @@ def run_dibra():
     total_ranklist = np.argsort(-new_l, axis=1)
     result = np.argsort(total_ranklist, axis=1)
 
-    # Save the result to a MAT file
-    savemat('D:/LocalGit/RA-toolbox/py.mat', {'result': result})
+    return result
 
 
-def dibra(input_file_path, output_file_path):
+def dibra(input_file_path, output_file_path, input_type=InputType.SCORE):
     """
     Process the input CSV file to aggregate rankings and write the results to an output CSV file.
     Parameters
     ----------
     input_file_path : str
         Path to the input CSV file.
+        The input to the algorithm should be in CSV file format with the following columns:
+
+        - Query: Does not require consecutive integers starting from 1.
+        - Voter Name: Allowed to be in string format.
+        - Item Code: Allowed to be in string format.
+        - Item Score/Item Rank: Represents the score/rank given by each voter. It is recommended to choose the score format
     output_file_path : str
         Path to the output CSV file.
+    input_type : InputType, optional
+        The type of input data, defaults to InputType.RANK. It determines
+        the naming of the fourth column, which will either be 'Item Rank'
+        or 'Item Score' based on this value.
     """
     df, unique_queries = csv_load(input_file_path)
-    # Create an empty DataFrame to store results
-    result = []
-
-    for query in unique_queries:
-        # Filter data for the current Query
-        query_data = df[df['Query'] == query]
-
-        item_code_reverse_mapping, _, _, _, input_lists = wtf_map(
-            query_data)
-
-        # Call function to get aggregated ranks
-        rank = dibra_agg(input_lists)
-
-        # Append results to the result list
-        for item_code_index, item_rank in enumerate(rank):
-            item_code = item_code_reverse_mapping[item_code_index]
-            new_row = [query, item_code, item_rank]
-            result.append(new_row)
-
-    # Write results to the output CSV file
-    save_as_csv(output_file_path, result)
+    numpy_data, queries_mapping_dict = df_to_numpy(df, input_type)
+    save_as_csv(output_file_path, dibra_agg(numpy_data), queries_mapping_dict)

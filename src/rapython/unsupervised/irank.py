@@ -12,33 +12,22 @@ Authors:
 Date:
     2024-10-11
 """
-import h5py
 import numpy as np
-from scipy.io import savemat
+
+from src.rapython.datatools import *
 
 
-def run_irank():
-    """
-    sim: voter * query * item
-    """
-    # 使用 with 语句打开并读取 HDF5 文件
-    with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
-        # 读取数据集
-        sim = f['workerlist_sim'][:].T
-
+def irank_agg(sim):
     rankernum = sim.shape[0]
     querynum = sim.shape[1]
     itemnum = sim.shape[2]
 
-    print(sim.shape)
-    # 排序并得到ranklist和rank
     ranklist = np.argsort(-sim, axis=2)
     rank = np.argsort(ranklist, axis=2)
 
     topk = itemnum
     superviserank = np.zeros((rankernum - 1, querynum, itemnum))
 
-    # 迭代三次
     for iteration in range(3):
         newsim = sim * 0.9
         for i in range(rankernum):
@@ -70,8 +59,29 @@ def run_irank():
     finalsim = finalsim.reshape(querynum, itemnum)
     result = np.argsort(-finalsim, axis=1)
     result = np.argsort(result, axis=1)
-    # 保存排名结果
-    savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'result': result})
+    return result
 
 
-run_irank()
+def irank(input_file_path, output_file_path, input_type=InputType.SCORE):
+    """
+    Process the input CSV file to aggregate rankings and write the results to an output CSV file.
+    Parameters
+    ----------
+    input_file_path : str
+        Path to the input CSV file.
+        The input to the algorithm should be in CSV file format with the following columns:
+
+        - Query: Does not require consecutive integers starting from 1.
+        - Voter Name: Allowed to be in string format.
+        - Item Code: Allowed to be in string format.
+        - Item Score/Item Rank: Represents the score/rank given by each voter. It is recommended to choose the score format
+    output_file_path : str
+        Path to the output CSV file.
+    input_type : InputType, optional
+        The type of input data, defaults to InputType.RANK. It determines
+        the naming of the fourth column, which will either be 'Item Rank'
+        or 'Item Score' based on this value.
+    """
+    df, unique_queries = csv_load(input_file_path)
+    numpy_data, queries_mapping_dict = df_to_numpy(df, input_type)
+    save_as_csv(output_file_path, irank_agg(numpy_data), queries_mapping_dict)

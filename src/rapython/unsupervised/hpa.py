@@ -16,50 +16,48 @@ import h5py
 import numpy as np
 from scipy.io import savemat
 
+from src.rapython.datatools import *
+
 
 def hpa_func(sim, topk):
-    # 获取画廊数量和排名者数量
+    # Get the number of gallery items and the number of rankers
     gallerynum = sim.shape[0]
     rankernum = sim.shape[1]
 
-    # 计算平均排名
+    # Calculate the average rank for each gallery item
     averagerank = np.sum(sim, axis=1)
-    averagerank = averagerank / np.max(averagerank)  # 防止除以零
+    averagerank = averagerank / np.max(averagerank)  # Prevent division by zero
 
-    # 获取排名列表
+    # Obtain the ranking list by sorting in descending order
     ranklist = np.argsort(-sim, axis=0)
 
-    # 初始化 ndcg
+    # Initialize ndcg (Normalized Discounted Cumulative Gain)
     ndcg = np.zeros(rankernum)
 
-    # 计算 ndcg 值
+    # Calculate ndcg values for each ranker
     for i in range(rankernum):
         for j in range(topk):
+            # Update ndcg using the average rank and logarithmic scaling
             ndcg[i] += averagerank[ranklist[j, i]] * np.log(2) / np.log(i + 2)
 
-    # 获取 ndcg 排名
+    # Get the ranking indices of ndcg values in descending order
     ndcgrank = np.argsort(-ndcg)
 
-    # 初始化 finalrank
+    # Initialize finalrank to hold the cumulative scores
     finalrank = np.zeros(gallerynum)
 
-    # 计算最终排名
+    # Calculate the final ranking based on ndcg values and similarity scores
     for i in range(rankernum):
         finalrank += ndcg[ndcgrank[i]] * sim[:, ndcgrank[i]]
 
-    # 对最终排名进行排序
+    # Sort the final ranking and transform the indices back to their original order
     finalrank = np.argsort(-finalrank)
     finalrank = np.argsort(finalrank)
 
     return finalrank
 
 
-def run_hpa():
-    # 使用 with 语句打开并读取 HDF5 文件
-    with h5py.File(r"D:\RA_ReID\Person-ReID\test\cuhk03detected_6workers.mat", 'r') as f:
-        # 读取数据集
-        sim = f['workerlist_sim'][:].T
-
+def hpa_agg(sim):
     rankernum = sim.shape[0]
     querynum = sim.shape[1]
     item_num = sim.shape[2]
@@ -69,10 +67,30 @@ def run_hpa():
 
     for i in range(querynum):
         finalrank = hpa_func(sim[:, i, :].reshape(rankernum, item_num).T, topk)
-        result[i, :] = finalrank.flatten()  # 确保行向量形式
-
-    # 保存 .mat 文件
-    savemat(r'D:\LocalGit\RA-toolbox\py.mat', {'res': result})
+        result[i, :] = finalrank.flatten()
+    return result
 
 
-run_hpa()
+def hpa(input_file_path, output_file_path, input_type=InputType.SCORE):
+    """
+    Process the input CSV file to aggregate rankings and write the results to an output CSV file.
+    Parameters
+    ----------
+    input_file_path : str
+        Path to the input CSV file.
+        The input to the algorithm should be in CSV file format with the following columns:
+
+        - Query: Does not require consecutive integers starting from 1.
+        - Voter Name: Allowed to be in string format.
+        - Item Code: Allowed to be in string format.
+        - Item Score/Item Rank: Represents the score/rank given by each voter. It is recommended to choose the score format
+    output_file_path : str
+        Path to the output CSV file.
+    input_type : InputType, optional
+        The type of input data, defaults to InputType.RANK. It determines
+        the naming of the fourth column, which will either be 'Item Rank'
+        or 'Item Score' based on this value.
+    """
+    df, unique_queries = csv_load(input_file_path)
+    numpy_data, queries_mapping_dict = df_to_numpy(df, input_type)
+    save_as_csv(output_file_path, hpa_agg(numpy_data), queries_mapping_dict)

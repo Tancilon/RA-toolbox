@@ -1,6 +1,5 @@
 """
 Aggregation Methods Module
-==========================
 
 This module provides functions to compute aggregated scores based on various
 ranking systems. The aggregation methods take a 2D array of rankings where each
@@ -11,6 +10,11 @@ offers four types of aggregation:
 - Reciprocal Aggregation: Uses the reciprocal of the rank.
 - Power Aggregation: Applies an exponential function to ranks.
 - Logarithmic Aggregation: Uses logarithmic transformation of ranks.
+
+Authors:
+    fsw
+Date:
+    2023-10-19
 """
 
 import math
