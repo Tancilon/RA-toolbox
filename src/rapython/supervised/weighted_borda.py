@@ -1,38 +1,56 @@
 """
-UTF-8 
-rapython: 3.11.4
+Encoding: UTF-8
+Python Version: 3.11.4
 
-参考文献: Supervised Rank Aggregation for Predicting Influencers in Twitter(2011)
-Tancilon: 20231226
+Reference:
+-----------
+- Subbian, K., & Melville, P. (2011, October). Supervised rank aggregation for predicting influencers in twitter. In 2011 IEEE Third International Conference on Privacy, Security, Risk and Trust and 2011 IEEE Third International Conference on Social Computing (pp. 661-665). IEEE.
 
+Author:
+-------
+- Tancilon
 
-训练集数据输入格式：
-文件1: train_rel_data: 
-                        1)csv文件格式 
-                        2)4列 Query | 0 | Item | Relevance
-文件2: train_base_data: 
-                        1) csv文件格式 
-                        2)4列 Query | Voter name | Item Code | Item Rank
+Date:
+-----
+- 2023-12-26
 
-- Query 不要求是从1开始的连续整数
-- Voter name 和 Item Code允许是字符串格式
+Input Format for Training Data:
+-------------------------------
+1. File 1: train_rel_data
+   - Format: CSV
+   - Columns: Query | 0 | Item | Relevance
 
+2. File 2: train_base_data
+   - Format: CSV
+   - Columns: Query | Voter Name | Item Code | Item Rank
 
-定义算法的最终输出为csv文件格式: 3列 Query | Item Code | Item Rank
-    - 注意输出的为排名信息，不是分数信息
+Notes:
+------
+- Query does not need to be consecutive integers starting from 1.
+- Voter Name and Item Code are allowed to be in string format.
 
-测试集数据输入格式：
+Output Format:
+--------------
+- The final output of the algorithm will be in CSV format with the following columns:
+  - Query | Item Code | Item Rank
+  - Note: The output contains ranking information, not score information.
 
-文件1: test_data: 
-                1) csv文件格式 
-                2)4列 Query | Voter name | Item Code | Item Rank
-                - Query 不要求是从1开始的连续整数
-                - Voter name 和 Item Code允许是字符串格式
+Input Format for Testing Data:
+-------------------------------
+1. File 1: test_data
+   - Format: CSV
+   - Columns: Query | Voter Name | Item Code | Item Rank
 
-其他细节：
-        1) 数据输入接受full lists,对Partial list的处理采用排在最后一名的方式
-        2) Item Rank数值越小, 排名越靠前
-        3) 训练集和测试集的Voter相同
+Notes:
+------
+- Query does not need to be consecutive integers starting from 1.
+- Voter Name and Item Code are allowed to be in string format.
+
+Additional Details:
+-------------------
+1. The data input accepts full lists; partial lists will be treated as having the lowest rank.
+2. Smaller Item Rank values indicate higher rankings.
+3. The voters in the training and testing datasets are the same.
 """
 
 import csv
@@ -45,11 +63,25 @@ from evaluation import Evaluation
 
 class WeightedBorda:
     """
-    hyper-parameters:
-        topk: 精度计算时topk的设置, 若不设置, 则默认为一个query下相关性文档的数量
+    A class to implement the Weighted Borda Count algorithm for ranking items
+    based on preferences from multiple voters.
     """
 
     def __init__(self, topk=None, is_partial_list=True):
+        """
+        Initializes the WeightedBorda instance with the specified parameters.
+
+        Parameters:
+        -----------
+        topk : int, optional
+            The number of top items to consider for accuracy calculations.
+            If not provided, it defaults to the count of relevant documents
+            for each query.
+
+        is_partial_list : bool, optional
+            Indicates whether the input data contains partial rankings.
+            Defaults to True.
+        """
         self.weights = None
         self.average_weight = None
         self.voter_name_mapping = None
@@ -61,6 +93,23 @@ class WeightedBorda:
 
     @staticmethod
     def partialtofull(rank_base_data_matrix):
+        """
+        Converts a rank base data matrix with potential missing values
+        into a full list format by placing all unrated items at the
+        bottom of the ranking.
+
+        Parameters:
+        -----------
+        rank_base_data_matrix : numpy.ndarray
+            A 2D numpy array of shape (voter_num, item_num) containing
+            rankings, where missing values are represented by NaN.
+
+        Returns:
+        --------
+        numpy.ndarray
+            A modified rank base data matrix in full list format, where
+            all unrated items are assigned the lowest rank.
+        """
         # 扩充为full list的方式是将未排序的项目全部并列放在最后一名
         num_voters = rank_base_data_matrix.shape[0]
 
@@ -74,13 +123,35 @@ class WeightedBorda:
 
         return rank_base_data_matrix
 
-    """
-    return:
-        score_base_data_matrix: voter * item 存储Borda分数
-        rel_data_matrix: 1 * item 存储item的相关性
-    """
-
     def convert_to_matrix(self, base_data, rel_data=None):
+        """
+        Converts the provided base data and relevance data into matrices
+        suitable for further processing. The method generates a rank base
+        data matrix, a score base data matrix, and a relevance data matrix.
+
+        Parameters:
+        -----------
+        base_data : pandas.DataFrame
+            A DataFrame containing the base data with columns 'Query',
+            'Voter Name', 'Item Code', and 'Item Rank'.
+
+        rel_data : pandas.DataFrame, optional
+            A DataFrame containing relevance data with columns 'Query',
+            'Item Code', and 'Relevance'. Defaults to None.
+
+        Returns:
+        --------
+        tuple
+            - score_base_data_matrix : numpy.ndarray
+              A 2D numpy array of shape (voter_num, item_num) storing
+              Borda scores.
+            - rel_data_matrix : numpy.ndarray
+              A 1D numpy array of shape (item_num,) storing relevance
+              scores if rel_data is provided; otherwise, only the
+              score_base_data_matrix and item_mapping are returned.
+            - item_mapping : dict
+              A mapping of item codes to their corresponding indices.
+        """
         unique_items = base_data['Item Code'].unique()
         item_num = len(unique_items)
         item_mapping = {name: i for i, name in enumerate(unique_items)}
@@ -118,38 +189,49 @@ class WeightedBorda:
 
     def train(self, train_base_data, train_rel_data):
         """
-        Data process
+        Trains the model using the provided training data, calculating
+        weights for each voter based on their performance on different
+        queries.
+
+        Parameters:
+        -----------
+        train_base_data : pandas.DataFrame
+            A DataFrame containing the training base data with columns
+            'Query', 'Voter Name', 'Item Code', and 'Item Rank'.
+
+        train_rel_data : pandas.DataFrame
+            A DataFrame containing the training relevance data with columns
+            'Query', '0', 'Item Code', and 'Relevance'.
+
+        Returns:
+        --------
+        None
+            The method updates the internal state of the class with
+            calculated weights and average weights for the voters.
         """
+        # Data process
         train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
         unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
         self.voter_num = len(unique_voter_names)
-        # 建立映射
+        # Establish mapping
         self.voter_name_reverse_mapping = {i: name for i, name in enumerate(unique_voter_names)}
         self.voter_name_mapping = {v: k for k, v in self.voter_name_reverse_mapping.items()}
         self.query_mapping = {name: i for i, name in enumerate(unique_queries)}
 
         self.weights = np.zeros((len(unique_queries), self.voter_num))
 
-        """
-        Consider each query
-        """
+        # Consider each query
         for query in tqdm(unique_queries):
-            """
-            筛出当前query的数据
-            """
+            # Filter out the data of the current query
             base_data = train_base_data[train_base_data['Query'] == query]
             rel_data = train_rel_data[train_rel_data['Query'] == query]
 
-            """
-            转为二维Numpy矩阵
-            """
+            # Convert to 2D Numpy matrix
             base_data_matrix, rel_data_matrix, _ = self.convert_to_matrix(base_data, rel_data)
-            """
-            计算每一个voter的性能
-            """
+            # Calculate the performance of each voter
             evaluation = Evaluation()
             for voter_idx in range(self.voter_num):
                 if self.topk is None:
@@ -157,27 +239,41 @@ class WeightedBorda:
                 else:
                     topk = self.topk
                 voter_w = evaluation.compute_p_s(base_data_matrix[voter_idx, :], rel_data_matrix, topk) * self.voter_num
-                # voter_w = evaluation.compute_AP_s(base_data_matrix[voter_idx, :], rel_data_matrix, topk)
 
                 query_idx = self.query_mapping[query]
                 self.weights[query_idx, voter_idx] = voter_w
 
-        """
-        下面算出针对所有Query的平均权重
-        """
+        # Calculate the average weight for all queries below
         self.average_weight = np.mean(self.weights, axis=0)
 
-    """
-    using_average:
-        1.选择使用的权重参数是否是平均权重
-        2.当using_average = false 时, 用于测试集的query和训练集的query相同的情况
-    """
-
     def test(self, test_data, test_output_loc, using_average_w=True):
+        """
+        Tests the model on the provided test data and writes the results
+        to the specified output location.
+
+        Parameters:
+        -----------
+        test_data : pandas.DataFrame
+            A DataFrame containing the test data with columns 'Query',
+            'Voter Name', 'Item Code', and 'Item Rank'.
+
+        test_output_loc : str
+            The file path where the results will be saved in CSV format.
+
+        using_average_w : bool, optional
+            A flag to indicate whether to use average weights for scoring.
+            Defaults to True.
+
+        Returns:
+        --------
+        None
+            The method writes the ranking results to the specified output
+            location.
+        """
         test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         unique_test_queries = test_data['Query'].unique()
-        # 创建一个空的DataFrame来存储结果
 
+        # Create an empty DataFrame to store the results
         with open(test_output_loc, mode='w', newline='') as file:
             writer = csv.writer(file)
 
