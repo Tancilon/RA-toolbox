@@ -76,21 +76,42 @@ def delta(v, sigma):
 
 
 def er_agg(sim):
-    rankernum = sim.shape[0]
-    querynum = sim.shape[1]
-    item_num = sim.shape[2]
+    """
+    Aggregate rankings from multiple rankers using the rank aggregation method.
 
+    Parameters:
+    -----------
+    sim : numpy.ndarray
+        A 3D array of shape (rankernum, querynum, item_num) representing the similarity scores
+        or rankings from multiple rankers. Each slice sim[:, i, :] contains the rankings for
+        the i-th query, where rankernum is the number of rankers, querynum is the number of queries,
+        and item_num is the number of items.
+
+    Returns:
+    --------
+    numpy.ndarray
+        A 2D array of shape (querynum, item_num) containing the aggregated rankings for each query.
+        Each row corresponds to a query, and each column corresponds to an item. The values represent
+        the final ranks of the items after aggregation, where lower values indicate higher ranks.
+    """
+    rankernum = sim.shape[0]  # Number of rankers
+    querynum = sim.shape[1]  # Number of queries
+    item_num = sim.shape[2]  # Number of items
+
+    # Get ranks by sorting similarity scores in descending order
     rank = np.argsort(-sim, axis=2)
+    # Get final ranks by ranking the ranks from multiple rankers
     rank = np.argsort(rank, axis=2)
 
-    res = np.zeros((querynum, item_num))
+    res = np.zeros((querynum, item_num))  # Initialize the result array
 
     for i in range(querynum):
+        # Ensemble the rankings for the i-th query and get the final ranking
         _, finalranking, *_ = ensemble_ranking(
             rank[:, i, :].reshape(rankernum, item_num).T)
-        res[i, :] = finalranking
+        res[i, :] = finalranking  # Store the final ranking for the query
 
-    return res
+    return res  # Return the aggregated rankings
 
 
 def er(input_file_path, output_file_path, input_type=InputType.SCORE):

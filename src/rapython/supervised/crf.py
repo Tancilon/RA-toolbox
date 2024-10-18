@@ -301,22 +301,6 @@ class CRF:
         negative_energy /= item_num * item_num
         return negative_energy
 
-    """
-    Parameters:
-        alpha : float
-            The learning rate used for updating the weights during training.
-
-        epsilon : int
-            The cut-off threshold for the number of samples. This value must be greater 
-            than the number of unique relevance labels in the dataset (e.g., if there 
-            are only 0 and 1 labels, epsilon must be at least 2).
-
-        loss_cut_off : int or None
-            The value of k for ndcg@k. If set to None, it will be assigned the total 
-            number of relevant documents in the dataset.
-
-    """
-
     def train(self, train_base_data, train_rel_data, alpha=0.01, epsilon=5, epoch=300, loss_cut_off=None):
         """
         Train the model using the provided training data.
