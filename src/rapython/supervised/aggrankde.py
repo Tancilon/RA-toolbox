@@ -1,114 +1,129 @@
 """
-UTF-8 
-rapython: 3.11.4
+AggRankDE Algorithm
 
-参考文献: Aggregation of Rankings Using Metaheuristics in Recommendation Systems(2022)
+This module implements the AggRankDE algorithm for rank aggregation.
+This implementation is based on the following reference:
 
-Tancilon: 20231219
+Reference:
+-----------
+- Bałchanowski, M., & Boryczka, U. (2022). Aggregation of rankings using metaheuristics in recommendation systems. Electronics, 11(3), 369.
 
+Authors:
+    tancilon
+Date:
+    2023-12-19
 
-训练集数据输入格式：
-文件1: train_rel_data: 
-                        1)csv文件格式 
-                        2)4列 Query | 0 | Item | Relevance
-文件2: train_base_data: 
-                        1) csv文件格式 
-                        2)4列 Query | Voter name | Item Code | (Item Rank / Item Score)
+Training Data Format:
+---------------------
+The training data consists of two CSV files:
 
-- Query 不要求是从1开始的连续整数
-- Voter name 和 Item Code允许是字符串格式
-- train_base_data 默认情况下位Item Rank, 如果要输入Item Score, 设置模型参数type = score, 当设置为score时, 要求训练集和测试集都应该是score形式, 不能一个rank一个score
+1. train_rel_data:
+   - Format: CSV
+   - Columns: `Query`, `0`, `Item`, `Relevance`
 
-定义算法的最终输出为csv文件格式: 3列 Query | Item Code | Item Rank
-    - 注意输出的为排名信息，不是分数信息
+2. train_base_data:
+   - Format: CSV
+   - Columns: `Query`, `Voter Name`, `Item Code`, `(Item Rank / Item Score)`
+   - Notes:
+     - `Query`: Does not need to be consecutive integers starting from 1.
+     - `Voter Name` and `Item Code`: Can be strings.
+     - By default, `train_base_data` is in `Item Rank` format. To use `Item Score`, set the model parameter `type = score`.
+       - If `type = score` is set, both training and testing datasets must use the `score` format.
 
-测试集数据输入格式：
+Output Format:
+--------------
+The algorithm produces the following output as a CSV file:
 
-文件1: test_data: 
-                1) csv文件格式 
-                2)4列 Query | Voter name | Item Code | (Item Rank / Item Score)
-                - Query 不要求是从1开始的连续整数
-                - Voter name 和 Item Code允许是字符串格式
+- Columns: `Query`, `Item Code`, `Item Rank`
+  - Note: The output contains rank information, not score information.
 
-其他细节：
-        1) 数据输入最好为full lists, 对于partial list算法最后会给未排序的项目赋值0分
-        2) Item Rank数值越小, 排名越靠前
-        3) 训练集和测试集的Voter相同
+Test Data Format:
+-----------------
+The test data consists of one CSV file:
+
+1. test_data:
+   - Format: CSV
+   - Columns: `Query`, `Voter Name`, `Item Code`, `(Item Rank / Item Score)`
+   - Notes:
+     - `Query`: Does not need to be consecutive integers starting from 1.
+     - `Voter Name` and `Item Code`: Can be strings.
+
+Additional Notes:
+-----------------
+1. Full lists of data are recommended for best performance. For partial lists, the algorithm assigns a score of 0 to unrated items.
+2. The smaller the `Item Rank`, the higher the item is ranked.
+3. The same voters should be used in both the training and testing datasets.
 """
+
+import csv
+import random
 
 import numpy as np
-import pandas as pd
-import csv
-import time
-import random
 from tqdm import tqdm
-import pickle
+
 from evaluation import Evaluation
-
-"""
-参考文献: Using Differential Evolution in order to create a personalized list of recommended items(2020)
-"""
-
-
-def compute_ap(rank_list, rel_data, n_value, item_mapping):
-    relevant_items = []
-    for _, row in rel_data.iterrows():
-        rel = row['Relevance']
-        item_name = row['Item Code']
-        if rel > 0:
-            item_id = item_mapping[item_name]
-            relevant_items.append(item_id)
-    """
-    当不额外设置AP@N中N的数值时, 将N的数值取为所有相关的Item个数
-    """
-    relevant_num = len(relevant_items)
-    if n_value is None:
-        n_value = relevant_num
-    sum_p = 0
-    """
-    或许有更加高效的写法
-    """
-    for n in range(n_value):
-        count = 0
-        if rank_list[n] not in relevant_items:
-            continue
-        for i in range(n_value):
-            if rank_list[i] in relevant_items:
-                count += 1
-        p_n = count / (n + 1)
-        sum_p += p_n
-
-    if relevant_num == 0:
-        return 0
-    else:
-        return sum_p / relevant_num
-
-
-"""
-A: 初始排序构成的矩阵： item * voter 存储score
-N: 在计算AP@N时N的取值, AP--->average precision
-"""
+from src.rapython.datatools import InputType
 
 
 def matrix_fitness_function(a_value, p1_value, p1_fitness, p2_value, rel_list, n_value):
+    """
+    Evaluate the fitness of individuals after crossover and mutation in a ranking-based genetic algorithm.
+
+    Parameters
+    ----------
+    a_value : numpy.ndarray
+        The initial ranking matrix, where rows represent items and columns represent voters.
+        Each element stores the score for a given item from a voter.
+
+    p1_value : numpy.ndarray
+        The current population's individual values (solutions) after selection, mutation, and crossover.
+
+    p1_fitness : numpy.ndarray
+        The fitness scores of the current population.
+
+    p2_value : numpy.ndarray
+        The new candidate solutions after crossover and mutation.
+
+    rel_list : numpy.ndarray
+        A list containing relevance values for each item, used to compute Average Precision (AP).
+
+    n_value : int or None
+        The value of N used for computing AP@N (Average Precision at N). If None, N will be set to
+        the number of relevant items (i.e., items where rel_list > 0).
+
+    Returns
+    -------
+    p1_fitness : numpy.ndarray
+        The updated fitness scores for the population after considering the new candidate solutions.
+
+    p1_value : numpy.ndarray
+        The updated individual values (solutions) after replacing the worse-performing individuals
+        with better-performing ones based on the fitness evaluation.
+
+    Notes
+    -----
+    - For each individual in the candidate population (p2_value), the function evaluates its performance
+      based on the Average Precision (AP) score using the relevance list. If the new individual has a
+      better AP score than the current one, the new individual replaces the old one.
+    - The fitness evaluation uses a sorted list of items based on scores for each voter.
+    """
     evaluation = Evaluation()
     c2_value = np.dot(a_value, p2_value)
     np_value = p2_value.shape[1]
-    """
-    考虑每一个交叉变异后的新个体的性能
-    """
+
+    # If N is not provided, set N to the number of relevant items.
     if n_value is None:
         n_value = np.sum(rel_list > 0)
 
     for i in range(np_value):
         item_column = c2_value[:, i]
-        # 对item分数从高到低排序
+        # Sort item scores in descending order
         rank_list = np.argsort(item_column)[::-1] + 1
 
+        # Compute the average precision (AP) for the current rank list
         ap = evaluation.compute_ap_r(rank_list, rel_list, n_value)
-        """
-        新个体更好,则原来的个体被淘汰
-        """
+
+        # If the new individual's AP is better than the current one, replace it
         if ap > p1_fitness[i]:
             p1_fitness[i] = ap
             p1_value[:, i] = p2_value[:, i]
@@ -117,6 +132,51 @@ def matrix_fitness_function(a_value, p1_value, p1_fitness, p2_value, rel_list, n
 
 
 def de(a_value, rel_data, max_iteration, cr_value, f_value, np_value, d_value, n_value, item_mapping):
+    """
+    Differential Evolution (DE) algorithm for optimizing ranking-based problems using average precision (AP) as the fitness metric.
+
+    Parameters
+    ----------
+    a_value : numpy.ndarray
+        The initial ranking matrix where rows represent items and columns represent voters. Each element stores the score for a given item from a voter.
+
+    rel_data : pandas.DataFrame
+        Relevance data used to evaluate the fitness of solutions. It contains columns 'Item Code' and 'Relevance', which map items to their relevance scores.
+
+    max_iteration : int
+        The maximum number of iterations for the DE algorithm.
+
+    cr_value : float
+        The crossover probability, a value between 0 and 1 that controls the probability of crossover during the evolution process.
+
+    f_value : float
+        The mutation factor, a constant that scales the difference between two randomly selected individuals for mutation.
+
+    np_value : int
+        The number of individuals in the population (i.e., population size).
+
+    d_value : int
+        The dimensionality of the solution space, which corresponds to the number of voters.
+
+    n_value : int or None
+        The value of N used for computing AP@N (Average Precision at N). If None, N is set to the number of relevant items (where `rel_list > 0`).
+
+    item_mapping : dict
+        A dictionary mapping 'Item Code' to its corresponding item index.
+
+    Returns
+    -------
+    numpy.ndarray
+        The best individual (solution) found after running the DE algorithm. This is a column vector representing the best scoring solution based on AP.
+
+    Notes
+    -----
+    - The algorithm initializes a population of random individuals (solutions) and evolves them using mutation, crossover, and selection.
+    - The fitness of each individual is evaluated based on the Average Precision (AP) computed from the ranking generated by the individual's scores.
+    - The algorithm iterates until the maximum number of iterations is reached or the population converges to a satisfactory solution.
+    """
+
+    # Initialize relevance list for items
     rel_list = np.zeros(a_value.shape[0])
     for _, row in rel_data.iterrows():
         item_code = row['Item Code']
@@ -124,21 +184,24 @@ def de(a_value, rel_data, max_iteration, cr_value, f_value, np_value, d_value, n
         item_id = item_mapping[item_code]
         rel_list[item_id] = item_rel
 
-    """
-    Generate Initial population matrix: voter * NP
-    """
+    # Generate initial population matrix: voter * NP (number of individuals)
     voter_num = a_value.shape[1]
     p1_value = np.empty((voter_num, np_value))
-    # 随机数上界与下界的设置
+
+    # Set upper and lower bounds for random initialization
     upperbound = 1
     lowerbound = 0
+
+    # Randomly initialize the population
     for i in range(voter_num):
         for j in range(np_value):
             p1_value[i, j] = random.uniform(lowerbound, upperbound)
-    # 计算初始种群的适应度
+
+    # Compute initial fitness of the population
     c0_val = np.dot(a_value, p1_value)
     fitness = np.empty(np_value)
     evaluation = Evaluation()
+
     if n_value is None:
         n_value = np.sum(rel_list > 0)
 
@@ -146,16 +209,14 @@ def de(a_value, rel_data, max_iteration, cr_value, f_value, np_value, d_value, n
         item_column = c0_val[:, i]
         rank_list = np.argsort(item_column)[::-1] + 1
         fitness[i] = evaluation.compute_ap_r(rank_list, rel_list, n_value)
-    """
-    Evolution
-    """
+
+    # Evolution process begins
     p2_val = np.empty((voter_num, np_value))
     iteration = 0
+
     while iteration < max_iteration:
         for i in range(np_value):
-            """
-            随机选择3个互不相同的个体
-            """
+            # Randomly select 3 distinct individuals for mutation
             a = random.randint(0, np_value - 1)
             while a == i:
                 a = random.randint(0, np_value - 1)
@@ -168,53 +229,67 @@ def de(a_value, rel_data, max_iteration, cr_value, f_value, np_value, d_value, n
             while c == i or c == a or c == b:
                 c = random.randint(0, np_value - 1)
 
-            """
-            产生一个随机参数, 确保新个体中至少有一个变异基因
-            """
+            # Generate a random index to ensure at least one gene is mutated
             rnbr_i = random.randint(0, d_value - 1)
 
             for j in range(d_value):
                 if random.random() <= cr_value or j == rnbr_i:
-                    """
-                    变异
-                    """
+                    # Mutation step
                     p2_val[j, i] = p1_value[j, a] + f_value * (p1_value[j, b] - p1_value[j, c])
                 else:
-                    """
-                    交叉
-                    """
+                    # Crossover step
                     p2_val[j, i] = p1_value[j, i]
 
-        """
-        评估与选择
-        """
-        fitness, p1_value = matrix_fitness_function(a_value, p1_value, fitness, p2_val, rel_list, n_value, item_mapping)
+        # Evaluate new population and select the best individuals
+        fitness, p1_value = matrix_fitness_function(a_value, p1_value, fitness, p2_val, rel_list, n_value)
         iteration += 1
 
-    """
-    迭代结束后, 找到种群中最好的个体
-    """
+    # After the evolution, find the best individual in the population
     max_index = np.argmax(fitness)
     return p1_value[:, max_index]
 
 
 class AggRankDE:
-    def __init__(self, np_val=50, max_iteration=100, CR=0.9, F=0.5, type='rank', N=None):
+    def __init__(self, np_val=50, max_iteration=100, cr=0.9, f=0.5, input_type=InputType.RANK, n=None):
         """
-        hyperparameters:
-            NP: Population
-            max_iteration: Number of Iterations
-            CR: Crossover's Probability range [0, 1]
-            F: Amplification Factor F , range [0, 2]
-            type: rank or score --> default = rank (要么训练集和测试集都是rank, 要么训练集和测试集都为score)
-            N: fitness function --> AP@N --> default = None 此时认为N是相关项目的数量
+        Initializes the parameters for the AggRankDE algorithm.
+
+        Parameters
+        ----------
+        np_val : int, optional
+            The size of the population (NP), representing the number of candidate solutions.
+            Default is 50.
+
+        max_iteration : int, optional
+            The maximum number of iterations for the optimization process.
+            Default is 100.
+
+        cr : float, optional
+            Crossover probability (CR) for the differential evolution algorithm,
+            which should be in the range [0, 1]. A higher value increases the chance
+            of crossover in the population. Default is 0.9.
+
+        f : float, optional
+            The amplification factor (F) for the differential evolution algorithm,
+            which controls the amount of perturbation applied to the population.
+            It should be in the range [0, 2]. Default is 0.5.
+
+        input_type : InputType, optional
+            Specifies whether the input data is treated as ranks or scores.
+            The default is InputType.RANK.
+            Both training and test datasets should be consistently formatted as ranks or scores.
+
+        n : int, optional
+            Represents the parameter for the fitness function, specifically for calculating
+            average precision at N (AP@N). If set to None, it assumes N is the number of relevant items.
+            Default is None.
         """
         self.NP = np_val
         self.max_iteration = max_iteration
-        self.CR = CR
-        self.F = F
-        self.type = type
-        self.N = N
+        self.CR = cr
+        self.F = f
+        self.type = input_type
+        self.N = n
         self.weights = None
         self.average_weight = None
         self.voter_name_reverse_mapping = None
@@ -222,185 +297,182 @@ class AggRankDE:
         self.voter_num = None
         self.query_mapping = None
 
-    def convertToMatrix(self, base_data):
+    def convert_to_matrix(self, base_data):
+        """
+        Converts the base_data DataFrame into a 2D matrix where rows represent items and columns represent voters.
+        The matrix stores either Item Scores or Item Ranks based on the input type.
 
+        Parameters
+        ----------
+        base_data : pandas.DataFrame
+            The input data containing the following columns:
+            - 'Item Code': The unique code identifying each item.
+            - 'Voter Name': The name of the voter (can be a string).
+            - 'Item Attribute': The attribute (either rank or score) provided by each voter for an item.
+
+        Returns
+        -------
+        numpy.ndarray
+            A 2D matrix (item_num * voter_num) where each element represents the normalized score or rank for an item provided by a voter.
+
+        item_mapping : dict
+            A dictionary mapping each 'Item Code' to its corresponding row index in the matrix.
+
+        Notes
+        -----
+        - If the input type (`self.type`) is `RANK`, the item attribute will be converted to a score by taking the reciprocal of the rank (1 / rank).
+        - If the input type is `SCORE`, the item attribute will be stored directly as the score.
+        - After constructing the matrix, it is normalized by the L2 norm along each column (i.e., each voter's scores are normalized).
+        - A small epsilon (1e-10) is added to the L2 norm to avoid division by zero during normalization.
         """
-        转化后的item * voter 二维矩阵统一存储Item score
-        """
+
+        # Extract unique items from the base data and create a mapping
         unique_items = base_data['Item Code'].unique()
         item_num = len(unique_items)
         item_mapping = {name: i for i, name in enumerate(unique_items)}
-        A = np.zeros((item_num, self.voter_num))
 
+        # Initialize a zero matrix to store item scores or ranks (item_num * voter_num)
+        a = np.zeros((item_num, self.voter_num))
+
+        # Iterate through the base_data to fill the matrix
         for _, row in base_data.iterrows():
             voter_name = row['Voter Name']
             item_code = row['Item Code']
             item_attribute = row['Item Attribute']
 
+            # Get the corresponding voter and item indices
             voter_index = self.voter_name_mapping[voter_name]
             item_index = item_mapping[item_code]
-            if (self.type == 'rank'):
-                A[item_index, voter_index] = 1 / item_attribute
-            elif (self.type == 'score'):
-                A[item_index, voter_index] = item_attribute
 
-        """
-        对矩阵A按列进行归一化处理, 这里采用L2范数归一化
-        (可能存在的问题: 不同的归一化技术是否会给之后的算法结果带来较大影响？)
-        """
-        column_norms = np.linalg.norm(A, axis=0)
-        # normalized_A = A / column_norms
-        # 防止除以零：给范数添加一个非常小的数
+            # Convert based on input type (rank or score)
+            if self.type == InputType.RANK:
+                a[item_index, voter_index] = 1 / item_attribute  # Convert rank to score
+            elif self.type == InputType.SCORE:
+                a[item_index, voter_index] = item_attribute  # Use score directly
+
+        # Normalize the matrix along each column (L2 norm)
+        column_norms = np.linalg.norm(a, axis=0)
+
+        # Add a small epsilon to avoid division by zero
         column_norms_safe = column_norms + 1e-10
-        normalized_A = A / column_norms_safe
-        return normalized_A, item_mapping
+        normalized_a = a / column_norms_safe
+
+        return normalized_a, item_mapping
 
     def train(self, train_base_data, train_rel_data):
+        """
+        Trains the model using the provided training data.
 
+        Parameters
+        ----------
+        train_base_data : DataFrame
+            A DataFrame containing the base training data, structured with columns for
+            Query, Voter Name, Item Code, and Item Attribute.
+
+        train_rel_data : DataFrame
+            A DataFrame containing the relevance training data, structured with columns
+            for Query, a placeholder column, Item Code, and Relevance score.
         """
-        Data process
-        """
+
+        # Rename columns in the training base data for consistency
         train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Attribute']
         train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
+        # Get unique queries and voter names from the training relevance data
         unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
+
+        # Store the number of unique voters
         self.voter_num = len(unique_voter_names)
-        # 建立整数到字符串的逆向映射
+
+        # Create mappings for voter names
+        # Integer to string reverse mapping for voters
         self.voter_name_reverse_mapping = {i: name for i, name in enumerate(unique_voter_names)}
+        # String to integer mapping for voters
         self.voter_name_mapping = {v: k for k, v in self.voter_name_reverse_mapping.items()}
+        # Mapping for queries
         self.query_mapping = {name: i for i, name in enumerate(unique_queries)}
 
+        # Initialize weights array for the queries
         self.weights = np.empty((len(unique_queries), self.voter_num))
 
-        """
-        Consider each query
-        """
-        # debug
-        # debug = 1
-
+        # Process each query to calculate weights
         for query in tqdm(unique_queries):
-            # print('debug:{0}'.format(debug))
-            # debug += 1
-
-            """
-            筛出当前query的数据
-            """
+            # Filter the base and relevance data for the current query
             base_data = train_base_data[train_base_data['Query'] == query]
             rel_data = train_rel_data[train_rel_data['Query'] == query]
 
-            A, item_mapping = self.convertToMatrix(base_data)
-            w = de(A, rel_data, self.max_iteration, self.CR, self.F, self.NP, self.voter_num, self.N, item_mapping)
+            # Convert the base data into a matrix form
+            a, item_mapping = self.convert_to_matrix(base_data)
 
-            """
-            存储当前Query训练出的权重向量
-            """
+            # Apply differential evolution to calculate weights for the current query
+            w = de(a, rel_data, self.max_iteration, self.CR, self.F, self.NP, self.voter_num, self.N, item_mapping)
+
+            # Store the weight vector obtained for the current query
             query_index = self.query_mapping[query]
             self.weights[query_index, :] = w
 
-        """
-        下面算出针对所有Query的平均权重
-        """
+        # Calculate the average weight across all queries
+
         self.average_weight = np.mean(self.weights, axis=0)
 
-    """
-    using_average:
-        1.选择使用的权重参数是否是平均权重
-        2.当using_average = false 时, 用于测试集的query和训练集的query相同的情况, 主要针对推荐系统中排序聚合的情况
-    """
-
     def test(self, test_data, test_output_loc, using_average_w=True):
+        """
+        Tests the model using the provided test data and writes the results to a CSV file.
+
+        Parameters
+        ----------
+        test_data : DataFrame
+            A DataFrame containing the test data, structured with columns for
+            Query, Voter Name, Item Code, and Item Attribute.
+
+        test_output_loc : str
+            The file path where the test results will be saved in CSV format.
+
+        using_average_w : bool, optional
+            A flag indicating whether to use average weights for scoring (default is True).
+        """
+
+        # Rename columns in the test data for consistency
         test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Attribute']
+
+        # Get unique queries from the test data
         unique_test_queries = test_data['Query'].unique()
 
+        # Open the output CSV file for writing results
         with open(test_output_loc, mode='w', newline='') as file:
             writer = csv.writer(file)
 
+            # Process each unique query in the test data
             for query in tqdm(unique_test_queries):
+                # Filter the test data for the current query
                 query_data = test_data[test_data['Query'] == query]
 
-                A, item_code_mapping = self.convertToMatrix(query_data)
+                # Convert the filtered query data into a matrix format
+                A, item_code_mapping = self.convert_to_matrix(query_data)
                 item_code_reverse_mapping = {v: k for k, v in item_code_mapping.items()}
 
-                if (using_average_w == True):
+                # Calculate scores based on the selected weight parameters
+                if using_average_w:
+                    # Use average weights to compute scores for the current query
                     score_list = np.dot(self.average_weight, A.T)
                 else:
-                    if (query not in self.query_mapping):
+                    # Check if the current query exists in the mapping
+                    if query not in self.query_mapping:
+                        # Fallback to average weights if the query is not found
                         score_list = np.dot(self.average_weight, A.T)
                     else:
+                        # Use the specific weights for the current query
                         query_id = self.query_mapping[query]
                         score_list = np.dot(self.weights[query_id, :], A.T)
 
+                # Rank items based on the calculated scores
                 rank_list = np.argsort(score_list)[::-1]
 
+                # Write the ranked results to the output CSV file
                 for rank_index, item_id in enumerate(rank_list):
+                    # Retrieve the item code using the reverse mapping
                     item_code = item_code_reverse_mapping[item_id]
+                    # Prepare a new row with query, item code, and rank index
                     new_row = [query, item_code, (rank_index + 1)]
                     writer.writerow(new_row)
-
-
-if __name__ == '__main__':
-    print('Load training data...')
-    start = time.perf_counter()
-
-    """
-    训练集和测试集的文件路径
-    """
-    # train_rel_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rel_train.csv'
-    # train_base_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rank_train.csv'
-    # test_loc = r'C:\Users\2021\Desktop\Validate_SRA\Dataset\Tac_MQ2008-agg\Fold1\rank_test.csv'
-    # test_output_loc = r'C:\Users\2021\Desktop\Validate_SRA\Validate_AggRankDE\result_MQ2008-agg\result_AggRankDE_MQ2008-agg-Fold1.csv'
-
-    """
-    DukeMTMC_VideoReID
-    """
-
-    # train_rel_loc = r'D:\RA_ReID\ReID_Dataset\DukeMTMC_VideoReID\train\top300-PSTA-DukeMTMC_VideoReID-train-rel.csv'
-    # train_base_loc = r'D:\RA_ReID\ReID_Dataset\DukeMTMC_VideoReID\train\top300-DukeMTMC_VideoReID_train_6worker_sim.csv'
-    # test_loc = r'D:\RA_ReID\ReID_Dataset\DukeMTMC_VideoReID\test\DukeMTMC_VideoReID_6worker_sim.csv'
-    # test_output_loc = r'result_AggRankDE_DukeMTMC_VideoReID_6worker_sim.csv'
-    # save_model_loc = r'DukeMTMC_VideoReID_AggRankDE.pkl'
-
-    """
-    MARS
-    """
-    # train_rel_loc = r'D:\RA_ReID\ReID_Dataset\MARS\train\top300-PSTA-MARS-train-rel.csv'
-    # train_base_loc = r'D:\RA_ReID\ReID_Dataset\MARS\train\top300_MARS_train_6worker_sim.csv'
-    # test_loc = r'D:\RA_ReID\ReID_Dataset\MARS\test\MARS_6worker_sim.csv'
-    # test_output_loc = r'result_AggRankDE_MARS_6worker_sim.csv'
-    # save_model_loc = r'MARS_AggRankDE.pkl'
-
-    train_rel_loc = r'/project/zhanghong/Tancilon/ReID/Market1501/top300_bdb-market1501-train-rel.csv'
-    train_base_loc = r'/project/zhanghong/Tancilon/ReID/Market1501/top300_market1501_6workerlist_train_sim.csv'
-    test_loc = r'/project/zhanghong/Tancilon/ReID/Market1501/market1501_6workers.csv'
-    test_output_loc = r'/project/zhanghong/Tancilon/Result/ReID/result_AggRankDE_market1501_6workers.csv'
-    save_model_loc = r'/project/zhanghong/Tancilon/Result/ReID/market1501_AggRankDE.pkl'
-
-    """
-    读文件
-    """
-    train_rel_data = pd.read_csv(train_rel_loc, header=None)
-    train_base_data = pd.read_csv(train_base_loc, header=None)
-
-    """
-    Run
-    """
-    aggRankDE = AggRankDE(max_iteration=500, N=10)
-    aggRankDE.train(train_base_data, train_rel_data)
-
-    end = time.perf_counter()
-    print('train_time:', end - start)
-
-    print('Saving model...')
-
-    with open(save_model_loc, 'wb') as f:
-        pickle.dump(aggRankDE, f)
-
-    test_data = pd.read_csv(test_loc, header=None)
-
-    print('Test...')
-    start = time.perf_counter()
-    aggRankDE.test(test_data, test_output_loc, using_average_w=False)
-    end = time.perf_counter()
-
-    print('test_time:', end - start)
