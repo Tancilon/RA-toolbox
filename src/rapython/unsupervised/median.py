@@ -35,10 +35,10 @@ import numpy as np
 import scorefunc as sc
 from src.rapython.datatools import *
 
-__all__ = ['medium']
+__all__ = ['median']
 
 
-def medium_agg(input_list):
+def median_agg(input_list):
     """
     Calculate the median ranking for items based on the input rankings.
 
@@ -76,7 +76,7 @@ def medium_agg(input_list):
     return result
 
 
-def medium(input_file_path, output_file_path):
+def median(input_file_path, output_file_path):
     """
     Process input data, compute median rankings using the medium_agg function,
     and save the results to a CSV file.
@@ -88,14 +88,14 @@ def medium(input_file_path, output_file_path):
     output_file_path : str
         The path to the output CSV file where results will be saved.
     """
-    df, unique_queries = csv_load(input_file_path)  # Load data from the CSV file
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)  # Load data from the CSV file
     result = []  # Initialize an empty list to store results
 
     for query in unique_queries:
         query_data = df[df['Query'] == query]  # Filter the DataFrame for the current query
 
         item_code_reverse_mapping, _, _, _, input_lists = wtf_map(query_data)
-        rank = medium_agg(input_lists)  # Get ranking information
+        rank = median_agg(input_lists)  # Get ranking information
 
         for item_code_index, item_rank in enumerate(rank):
             item_code = item_code_reverse_mapping[item_code_index]  # Get item code from mapping

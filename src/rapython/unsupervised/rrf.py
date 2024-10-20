@@ -68,7 +68,7 @@ def rrf(input_file_path, output_file_path):
     output_file_path : str
         The path to the output CSV file where results will be saved.
     """
-    df, unique_queries = csv_load(input_file_path)
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)
     result = []
 
     for query in unique_queries:

@@ -314,7 +314,7 @@ def markovchainmethod(input_file_path, output_file_path, mc_type=MethodType.MC1,
     max_iteration : int, optional
         The maximum number of iterations for the power method (default is 50).
     """
-    df, unique_queries = csv_load(input_file_path)  # Load data from the CSV file
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)  # Load data from the CSV file
     result = []  # Initialize an empty list to store results
 
     for query in unique_queries:

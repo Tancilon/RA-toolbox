@@ -69,7 +69,7 @@ def combmnz(input_file_path, output_file_path):
     output_file_path : str
         Path to the output CSV file where aggregated rankings will be written.
     """
-    df, unique_queries = csv_load(input_file_path)
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)
     # Create an empty DataFrame to store results
     result = []
 

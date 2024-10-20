@@ -93,7 +93,7 @@ def dowdall(input_file_path, output_file_path):
     -------
     None
     """
-    df, unique_queries = csv_load(input_file_path)  # Load the data and extract unique queries
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)  # Load the data and extract unique queries
     # Create an empty list to store the results
     result = []
 

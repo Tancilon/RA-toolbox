@@ -156,7 +156,7 @@ def mork_heuristicagg(input_list):
 
 
 def mork_heuristic(input_file_path, output_file_path):
-    df, unique_queries = csv_load(input_file_path)
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)
     result = []
 
     for query in unique_queries:

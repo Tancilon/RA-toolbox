@@ -105,9 +105,3 @@ def bordacount(input_file_path, output_file_path):
 
     # Write the results to the output CSV file
     save_as_csv(output_file_path, result)
-
-
-if __name__ == "__main__":
-    input_path = r'D:\LocalGit\RA-toolbox\datasets\ice-cream\ice-cream.csv'
-    output_path = r'D:\LocalGit\RA-toolbox\src\rapython\unsupervised\test.csv'
-    bordacount(input_path, output_path)
