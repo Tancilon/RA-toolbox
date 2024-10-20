@@ -58,7 +58,8 @@ import csv
 import numpy as np
 from tqdm import tqdm
 
-from evaluation import Evaluation
+from src.rapython.datatools import InputType
+from src.rapython.evaluation.evaluation import Evaluation
 
 
 class WeightedBorda:
@@ -238,7 +239,8 @@ class WeightedBorda:
                     topk = np.sum(rel_data_matrix > 0)
                 else:
                     topk = self.topk
-                voter_w = evaluation.compute_p_s(base_data_matrix[voter_idx, :], rel_data_matrix, topk) * self.voter_num
+                voter_w = evaluation.compute_precision(base_data_matrix[voter_idx, :], rel_data_matrix, topk,
+                                                       InputType.SCORE) * self.voter_num
 
                 query_idx = self.query_mapping[query]
                 self.weights[query_idx, voter_idx] = voter_w

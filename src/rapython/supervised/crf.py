@@ -61,7 +61,8 @@ import pandas as pd
 import tensorflow as tf
 from tqdm import tqdm
 
-from evaluation import Evaluation
+from src.rapython.datatools import InputType
+from src.rapython.evaluation import Evaluation
 
 
 class CRF:
@@ -234,7 +235,7 @@ class CRF:
             loss_cut_off = np.sum(r > 0)
 
         evaluation = Evaluation()
-        ndcg = evaluation.compute_ndcg_r(y, r, loss_cut_off)
+        ndcg = evaluation.compute_ndcg(y, r, loss_cut_off, InputType.RANK)
         return 1 - ndcg
 
     @staticmethod

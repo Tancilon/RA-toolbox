@@ -7,7 +7,7 @@ import warnings
 
 from src.rapython.datatools import InputType, wtf_map, SingleQueryMappingResults
 
-__all__ = ['csv_load', 'save_as_csv', 'df_to_numpy']
+__all__ = ['csv_load', 'save_as_csv', 'df_to_numpy', 'covert_pd_to_csv']
 
 
 def validate_csv_data(df):
@@ -437,3 +437,56 @@ def df_to_numpy(input_data, input_rel_data, input_type):
             numpy_rel_data[index, item_index] = item_relevance  # Assign relevance value.
 
     return numpy_data, numpy_rel_data, queries_mapping_dict
+
+
+def covert_pd_to_csv(query_test_data, query_rel_data):
+    """
+    Converts test and relevance data from pandas DataFrames to lists for rank and relevance.
+
+    This function processes the ranking and relevance data for a single query, converting
+    them from pandas DataFrames to numpy arrays. It maps the 'Item Code' to an internal
+    index and stores the corresponding 'Item Rank' and 'Relevance'.
+
+    Parameters:
+    -----------
+    query_test_data : pd.DataFrame
+        DataFrame containing the ranking data for the query.
+        Expected columns: ['Item Code', 'Item Rank'].
+
+    query_rel_data : pd.DataFrame
+        DataFrame containing the relevance data for the query.
+        Expected columns: ['Item Code', 'Relevance'].
+
+    Returns:
+    --------
+    ra_list : np.ndarray
+        An array containing the ranks of items based on their 'Item Code'.
+
+    rel_list : np.ndarray
+        An array containing the relevance scores of items based on their 'Item Code'.
+    """
+    unique_items = query_test_data['Item Code'].unique()
+
+    item_num = len(unique_items)
+    item_mapping = {name: i for i, name in enumerate(unique_items)}
+    ra_list = np.zeros(item_num)
+    rel_list = np.zeros(item_num)
+
+    for _, row in query_test_data.iterrows():
+        item_code = row['Item Code']
+        item_rank = row['Item Rank']
+
+        item_id = item_mapping[item_code]
+        ra_list[item_id] = item_rank
+
+    for _, row in query_rel_data.iterrows():
+        item_code = row['Item Code']
+        item_rel = row['Relevance']
+
+        if item_code not in item_mapping:
+            continue
+
+        item_id = item_mapping[item_code]
+        rel_list[item_id] = item_rel
+
+    return ra_list, rel_list

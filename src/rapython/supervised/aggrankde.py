@@ -61,7 +61,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 
-from evaluation import Evaluation
+from src.rapython.evaluation import Evaluation
 from src.rapython.datatools import InputType
 
 
@@ -121,7 +121,7 @@ def matrix_fitness_function(a_value, p1_value, p1_fitness, p2_value, rel_list, n
         rank_list = np.argsort(item_column)[::-1] + 1
 
         # Compute the average precision (AP) for the current rank list
-        ap = evaluation.compute_ap_r(rank_list, rel_list, n_value)
+        ap = evaluation.compute_average_precision(rank_list, rel_list, n_value, InputType.RANK)
 
         # If the new individual's AP is better than the current one, replace it
         if ap > p1_fitness[i]:
@@ -208,7 +208,7 @@ def de(a_value, rel_data, max_iteration, cr_value, f_value, np_value, d_value, n
     for i in range(np_value):
         item_column = c0_val[:, i]
         rank_list = np.argsort(item_column)[::-1] + 1
-        fitness[i] = evaluation.compute_ap_r(rank_list, rel_list, n_value)
+        fitness[i] = evaluation.compute_average_precision(rank_list, rel_list, n_value, InputType.RANK)
 
     # Evolution process begins
     p2_val = np.empty((voter_num, np_value))
