@@ -29,9 +29,7 @@ The final output of the algorithm will be in CSV file format with the following 
 - Item Rank: The rank information (not the score information).
   - Note: The smaller the Item Rank, the higher the rank.
 """
-
 import numpy as np
-
 from src.rapython.datatools import *
 
 __all__ = ['bordacount']
@@ -86,7 +84,7 @@ def bordacount(input_file_path, output_file_path):
     output_file_path : str
         Path to the output CSV file.
     """
-    df, unique_queries = csv_load(input_file_path)
+    df, unique_queries = csv_load(input_file_path, InputType.RANK)
     # Create an empty list to store results
     result = []
 
@@ -107,3 +105,9 @@ def bordacount(input_file_path, output_file_path):
 
     # Write the results to the output CSV file
     save_as_csv(output_file_path, result)
+
+
+if __name__ == "__main__":
+    input_path = r'D:\LocalGit\RA-toolbox\datasets\ice-cream\ice-cream.csv'
+    output_path = r'D:\LocalGit\RA-toolbox\src\rapython\unsupervised\test.csv'
+    bordacount(input_path, output_path)

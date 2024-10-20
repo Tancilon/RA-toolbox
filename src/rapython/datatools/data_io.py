@@ -5,7 +5,9 @@ import os
 import csv
 import warnings
 
-from src.rapython.datatools import InputType, wtf_map, SingleQueryMappingResults
+from .data_process import wtf_map
+from .constant import InputType
+from .data_class import SingleQueryMappingResults
 
 __all__ = ['csv_load', 'save_as_csv', 'df_to_numpy', 'covert_pd_to_csv']
 

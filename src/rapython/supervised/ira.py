@@ -14,6 +14,7 @@ Date:
 -----
 - 2024-10-18
 """
+from enum import Enum, auto
 
 import numpy as np
 
