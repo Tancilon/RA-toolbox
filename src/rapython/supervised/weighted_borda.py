@@ -58,7 +58,7 @@ import csv
 import numpy as np
 from tqdm import tqdm
 
-from src.rapython.datatools import InputType
+from src.rapython.datatools import InputType, csv_load
 from src.rapython.evaluation.evaluation import Evaluation
 
 
@@ -188,7 +188,7 @@ class WeightedBorda:
 
             return score_base_data_matrix, rel_data_matrix, item_mapping
 
-    def train(self, train_base_data, train_rel_data):
+    def train(self, train_file_path, train_rel_path):
         """
         Trains the model using the provided training data, calculating
         weights for each voter based on their performance on different
@@ -196,14 +196,13 @@ class WeightedBorda:
 
         Parameters:
         -----------
-        train_base_data : pandas.DataFrame
-            A DataFrame containing the training base data with columns
+        train_file_path : str
+            - The file path to the training base data (e.g., ranking data). It contains the training base data with columns
             'Query', 'Voter Name', 'Item Code', and 'Item Rank'.
 
-        train_rel_data : pandas.DataFrame
-            A DataFrame containing the training relevance data with columns
+        train_rel_path : str
+            - The file path to the relevance data (e.g., ground truth relevance scores). It contains the training relevance data with columns
             'Query', '0', 'Item Code', and 'Relevance'.
-
         Returns:
         --------
         None
@@ -211,10 +210,10 @@ class WeightedBorda:
             calculated weights and average weights for the voters.
         """
         # Data process
+        train_base_data, train_rel_data, unique_queries = csv_load(train_file_path, train_rel_path, InputType.RANK)
         train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
-        unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
         self.voter_num = len(unique_voter_names)
         # Establish mapping
@@ -248,19 +247,19 @@ class WeightedBorda:
         # Calculate the average weight for all queries below
         self.average_weight = np.mean(self.weights, axis=0)
 
-    def test(self, test_data, test_output_loc, using_average_w=True):
+    def test(self, test_file_path, test_output_path, using_average_w=True):
         """
         Tests the model on the provided test data and writes the results
         to the specified output location.
 
         Parameters:
         -----------
-        test_data : pandas.DataFrame
-            A DataFrame containing the test data with columns 'Query',
-            'Voter Name', 'Item Code', and 'Item Rank'.
+        test_file_path : str
+            - The file path to the test data (e.g., ranking data). The test data containing columns for queries, voter names, item codes, and item ranks.
 
-        test_output_loc : str
-            The file path where the results will be saved in CSV format.
+        test_output_path : str
+            The file path where the output CSV file will be saved. The output file will
+            contain the ranked results for each query in the format: [Query, Item Code, Item Rank].
 
         using_average_w : bool, optional
             A flag to indicate whether to use average weights for scoring.
@@ -272,11 +271,12 @@ class WeightedBorda:
             The method writes the ranking results to the specified output
             location.
         """
+        test_data, unique_test_queries = csv_load(test_file_path, InputType.RANK)
         test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         unique_test_queries = test_data['Query'].unique()
 
         # Create an empty DataFrame to store the results
-        with open(test_output_loc, mode='w', newline='') as file:
+        with open(test_output_path, mode='w', newline='') as file:
             writer = csv.writer(file)
 
             for query in tqdm(unique_test_queries):

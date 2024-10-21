@@ -61,7 +61,7 @@ import pandas as pd
 import tensorflow as tf
 from tqdm import tqdm
 
-from src.rapython.datatools import InputType
+from src.rapython.datatools import InputType, csv_load
 from src.rapython.evaluation import Evaluation
 
 
@@ -302,7 +302,7 @@ class CRF:
         negative_energy /= item_num * item_num
         return negative_energy
 
-    def train(self, train_base_data, train_rel_data, alpha=0.01, epsilon=5, epoch=300, loss_cut_off=None):
+    def train(self, train_file_path, train_rel_path, input_type, alpha=0.01, epsilon=5, epoch=300, loss_cut_off=None):
         """
         Train the model using the provided training data.
 
@@ -313,11 +313,14 @@ class CRF:
 
         Parameters:
         -----------
-        train_base_data : pandas.DataFrame
-            The base training data containing columns for queries, voter names, item codes, and item ranks.
+        train_file_path : str
+            - The file path to the training base data (e.g., ranking data).
 
-        train_rel_data : pandas.DataFrame
-            The relevance training data containing columns for queries, an unused column, item codes, and relevance scores.
+        train_rel_path : str
+            - The file path to the relevance data (e.g., ground truth relevance scores).
+
+        input_type : InputType
+            - Specifies the format or type of the input data. InputType.RANK is recommended.
 
         alpha : float, optional
             The learning rate for weight updates. Default is 0.01.
@@ -343,9 +346,9 @@ class CRF:
         - The loss is computed based on the rankings of items, and gradients are calculated for updating weights.
         - The function uses permutations of item rankings to explore all possible arrangements, impacting the objective function.
         """
+        train_base_data, train_rel_data, unique_queries = csv_load(train_file_path, train_rel_path, input_type)
         train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
-        unique_queries = train_rel_data['Query'].unique()
         unique_voter_names = train_base_data['Voter Name'].unique()
         self.voter_num = len(unique_voter_names)
         self.voter_name_reverse_mapping = {i: name for i, name in enumerate(unique_voter_names)}
@@ -398,7 +401,7 @@ class CRF:
                 # Update weights using the calculated gradient
                 self.weights = self.weights - alpha * grad.numpy()
 
-    def test(self, test_data, output):
+    def test(self, test_file_path, test_output_path):
         """
         Test the model using the provided test data and output the results to a CSV file.
 
@@ -408,10 +411,10 @@ class CRF:
 
         Parameters:
         -----------
-        test_data : pandas.DataFrame
-            The test data containing columns for queries, voter names, item codes, and item ranks.
+        test_file_path : str
+            - The file path to the test data (e.g., ranking data). The test data containing columns for queries, voter names, item codes, and item ranks.
 
-        output : str
+        test_output_path : str
             The file path where the output CSV file will be saved. The output file will
             contain the ranked results for each query in the format: [Query, Item Code, Item Rank].
 
@@ -433,10 +436,10 @@ class CRF:
         -----------------------
         Query | Item Code | Item Rank
         """
+        test_data, unique_test_queries = csv_load(test_file_path, InputType.RANK)
         test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
-        unique_test_queries = test_data['Query'].unique()
 
-        with open(output, mode='w', newline='') as file:
+        with open(test_output_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             for query in tqdm(unique_test_queries):
                 query_data = test_data[test_data['Query'] == query]

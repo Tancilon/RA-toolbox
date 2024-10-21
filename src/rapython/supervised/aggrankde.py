@@ -62,7 +62,7 @@ import numpy as np
 from tqdm import tqdm
 
 from src.rapython.evaluation import Evaluation
-from src.rapython.datatools import InputType
+from src.rapython.datatools import InputType, csv_load
 
 
 def matrix_fitness_function(a_value, p1_value, p1_fitness, p2_value, rel_list, n_value):
@@ -359,27 +359,32 @@ class AggRankDE:
 
         return normalized_a, item_mapping
 
-    def train(self, train_base_data, train_rel_data):
+    def train(self, train_file_path, train_rel_path, input_type):
         """
-        Trains the model using the provided training data.
+        Trains the model using the provided training data and relevance information.
 
-        Parameters
-        ----------
-        train_base_data : DataFrame
-            A DataFrame containing the base training data, structured with columns for
-            Query, Voter Name, Item Code, and Item Attribute.
+        Parameters:
+        -----------
+        train_file_path : str
+            - The file path to the training base data (e.g., ranking data).
+        train_rel_path : str
+            - The file path to the relevance data (e.g., ground truth relevance scores).
+        input_type : InputType
+            - Specifies the format or type of the input data. InputType.RANK is recommended.
 
-        train_rel_data : DataFrame
-            A DataFrame containing the relevance training data, structured with columns
-            for Query, a placeholder column, Item Code, and Relevance score.
+        Returns:
+        --------
+        None
+            - The function does not return a value, but it trains the model and stores the
+              resulting weights in `self.weights` and `self.average_weight`.
         """
 
+        train_base_data, train_rel_data, unique_queries = csv_load(train_file_path, train_rel_path, input_type)
         # Rename columns in the training base data for consistency
         train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Attribute']
         train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
-        # Get unique queries and voter names from the training relevance data
-        unique_queries = train_rel_data['Query'].unique()
+        # Get unique voter names from the training relevance data
         unique_voter_names = train_base_data['Voter Name'].unique()
 
         # Store the number of unique voters
@@ -416,31 +421,32 @@ class AggRankDE:
 
         self.average_weight = np.mean(self.weights, axis=0)
 
-    def test(self, test_data, test_output_loc, using_average_w=True):
+    def test(self, test_file_path, test_output_path, using_average_w=True):
         """
-        Tests the model using the provided test data and writes the results to a CSV file.
+        Tests the model using the provided test data and writes the ranked results to a CSV file.
 
         Parameters
         ----------
-        test_data : DataFrame
-            A DataFrame containing the test data, structured with columns for
-            Query, Voter Name, Item Code, and Item Attribute.
-
-        test_output_loc : str
-            The file path where the test results will be saved in CSV format.
-
+        test_file_path : str
+            - The file path to the test data (e.g., ranking data).
+        test_output_path : str
+            - The file path where the ranked results will be written in CSV format.
         using_average_w : bool, optional
-            A flag indicating whether to use average weights for scoring (default is True).
-        """
+            - A flag indicating whether to use the average weights across queries for scoring.
+              If True, the model uses the average weights; otherwise, it uses query-specific weights if available.
+              Default is True.
 
+        Returns
+        -------
+        None
+            - The function does not return a value but writes the ranked items to the CSV file specified by `test_output_path`.
+        """
+        test_data, unique_test_queries = csv_load(test_file_path, InputType.RANK)
         # Rename columns in the test data for consistency
         test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Attribute']
 
-        # Get unique queries from the test data
-        unique_test_queries = test_data['Query'].unique()
-
         # Open the output CSV file for writing results
-        with open(test_output_loc, mode='w', newline='') as file:
+        with open(test_output_path, mode='w', newline='') as file:
             writer = csv.writer(file)
 
             # Process each unique query in the test data

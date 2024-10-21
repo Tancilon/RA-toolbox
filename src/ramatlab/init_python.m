@@ -11,8 +11,13 @@ function init_python()
     % 项目根目录
     [projectDir, ~, ~] = fileparts(srcDir);
     
-    
+    unsupervisedpath = fullfile(srcDir, 'unsupervised');
+    supervisedpath = fullfile(srcDir, 'supervised');
+    semipath = fullfile(srcDir, 'semi');
     % 添加python解释器的搜索路径
     py.sys.path().append(projectDir);
+    py.sys.path().append(unsupervisedpath);
+    py.sys.path().append(supervisedpath);
+    py.sys.path().append(semipath);
     disp(py.sys.path())
 end
