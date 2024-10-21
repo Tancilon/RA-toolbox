@@ -47,11 +47,13 @@ Additional Details:
 """
 
 import csv
+import warnings
 
 import cvxpy as cp
 import numpy as np
 from scipy.stats import kendalltau
 from tqdm import tqdm
+from src.rapython.datatools import InputType, csv_load
 
 
 class SSRA:
@@ -207,18 +209,19 @@ class SSRA:
 
         return positive_semidefinite_matrix
 
-    def train(self, train_base_data, train_rel_data, alpha=0.03, beta=0.1, constraints_rate=0.3, is_partial_list=True):
+    def train(self, train_file_path, train_rel_path, input_type, alpha=0.03, beta=0.1, constraints_rate=0.3,
+              is_partial_list=True):
         """
         Train the model using the provided training data.
 
         Parameters:
         -----------
-        train_base_data : pd.DataFrame
-            - Contains ranking information with the following columns:
-              'Query', 'Voter Name', 'Item Code', and 'Item Rank'.
-        train_rel_data : pd.DataFrame
-            - Contains relevance information with the following columns:
-              'Query', '0', 'Item Code', and 'Relevance'.
+        train_file_path : str
+            - The file path to the training base data (e.g., ranking data).
+        train_rel_path : str
+            - The file path to the relevance data (e.g., ground truth relevance scores).
+        input_type : InputType
+            - Specifies the format or type of the input data. InputType.RANK is recommended.
         alpha : float, optional
             - A hyperparameter typically ranging from 0.01 to 0.1 that controls the influence of the quadratic form in the objective function.
         beta : float, optional
@@ -234,11 +237,15 @@ class SSRA:
             - The method modifies the model's internal state by calculating and storing the weights based on the training data.
         """
         # Set column names for base and relevance data
+        if input_type == InputType.SCORE:
+            # Pop up warning, prompting recommendation to use input_type=InputType RANK
+            warnings.warn("Recommend using input_type=InputType.RANK", UserWarning)
+
+        train_base_data, train_rel_data, unique_queries = csv_load(train_file_path, train_rel_path, input_type)
         train_base_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
         train_rel_data.columns = ['Query', '0', 'Item Code', 'Relevance']
 
-        # Get unique queries and voter names from the data
-        unique_queries = train_rel_data['Query'].unique()
+        # Get unique voter names from the data
         unique_voter_names = train_base_data['Voter Name'].unique()
 
         self.is_partial_list = is_partial_list
@@ -328,17 +335,17 @@ class SSRA:
         # Compute the average of the selected weights
         self.average_weight = np.mean(filtered_weights, axis=0)
 
-    def test(self, test_data, test_output_loc, using_average_w=True):
+    def test(self, test_file_path, test_output_path, using_average_w=True):
         """
         Test the model using the provided test data and save the results to a specified location.
 
         Parameters:
         -----------
-        test_data : pd.DataFrame
-            - Contains testing data with the following columns:
-              'Query', 'Voter Name', 'Item Code', and 'Item Rank'.
-        test_output_loc : str
-            - The file path where the results will be saved in CSV format.
+        test_file_path : str
+            - The file path to the test data (e.g., ranking data). The test data containing columns for queries, voter names, item codes, and item ranks.
+        test_output_path : str
+            The file path where the output CSV file will be saved. The output file will
+            contain the ranked results for each query in the format: [Query, Item Code, Item Rank].
         using_average_w : bool, optional
             - Indicates whether to use the average weights for scoring. If False, uses specific query weights.
 
@@ -347,14 +354,12 @@ class SSRA:
         None
             - The method writes the ranked results to a CSV file at the specified location.
         """
+        test_data, unique_test_queries = csv_load(test_file_path, InputType.RANK)
         # Rename the columns of the test data for consistency
         test_data.columns = ['Query', 'Voter Name', 'Item Code', 'Item Rank']
 
-        # Get the unique queries present in the test data
-        unique_test_queries = test_data['Query'].unique()
-
         # Create a CSV file to store the test results
-        with open(test_output_loc, mode='w', newline='') as file:
+        with open(test_output_path, mode='w', newline='') as file:
             writer = csv.writer(file)
 
             # Iterate through each unique query in the test data
