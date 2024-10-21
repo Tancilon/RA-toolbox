@@ -9,7 +9,7 @@ Reference:
 - Xiao, Y., Deng, H. Z., Lu, X., & Wu, J. (2021). Graph-based rank aggregation method for high-dimensional and partial rankings. Journal of the Operational Research Society, 72(1), 227-236.
 
 Authors:
-    fsw, tancilon
+    Shiwei Feng, Qi Deng
 Date:
     2023-10-20
 
@@ -32,6 +32,7 @@ The final output of the algorithm will be in CSV file format with the following 
 
 import numpy as np
 
+from common.constant import InputType
 from src.rapython.datatools import *
 
 __all__ = ['cg']

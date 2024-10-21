@@ -9,7 +9,7 @@ Reference:
 - Reilly, B. (2002). Social choice in the south seas: Electoral innovation and the borda count in the pacific island countries. International Political Science Review, 23(4), 355-372.
 
 Authors:
-    fsw, tancilon
+    Qi Deng, Shiwei Feng
 Date:
     2023-10-19
 

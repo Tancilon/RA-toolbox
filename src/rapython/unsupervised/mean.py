@@ -9,7 +9,7 @@ Reference:
 - Kaur, M., Kaur, P., & Singh, M. (2015, September). Rank aggregation using multi objective genetic algorithm. In 2015 1st International Conference on Next Generation Computing Technologies (NGCT) (pp. 836-840). IEEE.
 
 Authors:
-    fsw, tancilon
+    Qi Deng, Shiwei Feng
 Date:
     2023-10-18
 

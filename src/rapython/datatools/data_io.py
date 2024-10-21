@@ -6,7 +6,7 @@ import csv
 import warnings
 
 from .data_process import wtf_map
-from .constant import InputType
+from common.constant import InputType
 from .data_class import SingleQueryMappingResults
 
 __all__ = ['csv_load', 'save_as_csv', 'df_to_numpy', 'covert_pd_to_csv']

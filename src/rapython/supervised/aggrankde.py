@@ -9,7 +9,7 @@ Reference:
 - Bałchanowski, M., & Boryczka, U. (2022). Aggregation of rankings using metaheuristics in recommendation systems. Electronics, 11(3), 369.
 
 Authors:
-    tancilon
+    Qi Deng
 Date:
     2023-12-19
 

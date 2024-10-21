@@ -8,13 +8,15 @@ Reference:
 - Fujita, S., Kobayashi, H., & Okumura, M. (2020). Unsupervised ensemble of ranking models for news comments using pseudo answers. In Advances in Information Retrieval: 42nd European Conference on IR Research, ECIR 2020, Lisbon, Portugal, April 14–17, 2020, Proceedings, Part II 42 (pp. 133-140). Springer International Publishing.
 
 Authors:
-    fsw, tancilon
+    Qi Deng, Shiwei Feng
 Date:
     2024-9-18
 """
 import numpy as np
 
 from src.rapython.datatools import *
+
+__all__ = ['postndcg']
 
 
 def postndcg_agg(sim):

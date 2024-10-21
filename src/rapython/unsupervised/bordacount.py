@@ -9,7 +9,7 @@ Reference:
 - Borda, J. D. (1781). M'emoire sur les' elections au scrutin. Histoire de l'Acad'emie Royale des Sciences.
 
 Authors:
-    fsw, tancilon
+    Shiwei Feng, Qi Deng
 Date:
     2024-7-25
 
@@ -30,6 +30,8 @@ The final output of the algorithm will be in CSV file format with the following 
   - Note: The smaller the Item Rank, the higher the rank.
 """
 import numpy as np
+
+from common.constant import InputType
 from src.rapython.datatools import *
 
 __all__ = ['bordacount']

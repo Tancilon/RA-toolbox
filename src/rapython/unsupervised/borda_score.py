@@ -9,7 +9,7 @@ Reference:
 - Boehmer, N., Bredereck, R., & Peters, D. (2023, June). Rank aggregation using scoring rules. In Proceedings of the AAAI Conference on Artificial Intelligence (Vol. 37, No. 5, pp. 5515-5523).
 
 Authors: 
-    fsw, tancilon
+    Shiwei Feng, Qi Deng
 Date: 
     2024-7-25
 

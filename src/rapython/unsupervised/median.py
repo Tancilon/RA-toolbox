@@ -9,7 +9,7 @@ Reference:
 - Fagin, R., Kumar, R., & Sivakumar, D. (2003, June). Efficient similarity search and classification via rank aggregation. In Proceedings of the 2003 ACM SIGMOD international conference on Management of data (pp. 301-312).
 
 Authors:
-    fsw, tancilon
+    Qi Deng, Shiwei Feng
 Date:
     2023-10-18
 

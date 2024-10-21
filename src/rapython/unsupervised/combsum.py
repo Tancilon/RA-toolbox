@@ -19,6 +19,8 @@ import numpy as np
 import scorefunc as sc
 from src.rapython.datatools import *
 
+__all__ = ['combsum']
+
 
 def combsum_agg(input_list):
     """

@@ -9,7 +9,7 @@ Reference:
 - Dwork, C., Kumar, R., Naor, M., & Sivakumar, D. (2001, April). Rank aggregation methods for the web. In Proceedings of the 10th international conference on World Wide Web (pp. 613-622).
 
 Authors:
-    tancilon
+    Qi Deng
 Date:
     2023-09-26
 
@@ -35,6 +35,7 @@ The `MC()` function takes `input_list` as the input ranking information, which i
 - Note: If a Voter[i] does not rank a specific item[j], then `input_list[i][j]` should be set to NaN.
 - Note: The input ranking accepts partial lists.
 """
+from enum import Enum, auto
 
 import numpy as np
 

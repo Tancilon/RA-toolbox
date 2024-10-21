@@ -8,13 +8,15 @@ Reference:
 - Wei, F., Li, W., & Liu, S. (2010). iRANK: A rank‐learn‐combine framework for unsupervised ensemble ranking. Journal of the American Society for Information Science and Technology, 61(6), 1232-1243.
 
 Authors:
-    tancilon
+    Qi Deng
 Date:
     2024-10-11
 """
 import numpy as np
 
 from src.rapython.datatools import *
+
+__all__ = ['irank']
 
 
 def irank_agg(sim):

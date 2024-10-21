@@ -235,11 +235,8 @@ if is_train:
         print(epoch)
         print(
             'epoch: %d, loss_all: .4%f, loss_position: %.4f, loss_weight: %.4f, weight1: %.4f, weight2: %.4f, position_scores: %.4f, epoch_time: %.4f' % (
-            epoch, loss_all[0], loss_pos, loss_wgh, weights[0][0], weights[0][workers - 1],
-            sum(position_scores) / probe, end - start))
-        # print(sum(position_scores)/probe)
-        # print('weights:', weights[0][0],weights[0][workers-1])
-        # print(position_labels)
+                epoch, loss_all[0], loss_pos, loss_wgh, weights[0][0], weights[0][workers - 1],
+                sum(position_scores) / probe, end - start))
 
         save_path = '../block1batch'
         if epoch % 10 == 0:
@@ -297,7 +294,6 @@ else:
                                      feed_dict={x: input, y_: label_input, pos_s: position_scores,
                                                 pos_l: position_labels})
             prediction.append(pre[0])
-        # print(f)
         if is_validation:
             io.savemat('train_block1_label' + str(i) + '.mat', {'label': train_label})
             io.savemat('train_block1_prediciton' + str(i) + '.mat', {'prediction': prediction})
@@ -305,46 +301,5 @@ else:
             io.savemat('testres/test_block1_label' + str(i) + '_' + epoch + '.mat', {'label': train_label})
             io.savemat('testres/test_block1_prediciton' + str(i) + '_' + epoch + '.mat',
                        {'prediction': prediction})
-# weighted_scores = []
-# for j in range(0,probe):
-# 	abilities = []
-# 	for k in range(0,workers):
-# 		ability = np.array(prediction)[j+k*probe]
-# 		abilities.append(ability)
-#
-# 	ability_sum = sum(abilities)
-# 	abilities = abilities/ability_sum
-#
-# 	score=[]
-# 	for k in range(0,workers):
-# 		s = train_x[k][j]
-# 		score.append(s)
-# 	weight = sorted(abilities, reverse = True)
-#
-# 	ind = np.argsort(np.reshape(-abilities,[1,-1]))
-# 	new_scores = np.zeros(gallery)
-# 	for k in range(0,workers):
-# 		p = ind[0][k]
-# 		weighting = np.array(weight)[k]*np.array(score)[p]
-# 		new_scores = new_scores+weighting
-#
-# 	weighted_scores.append(new_scores)
-#
-# if is_validation:
-# 	io.savemat('train_weighted_scores'+str(i)+'.mat', {'weighted_scores': weighted_scores})
-# else:
-# 	io.savemat('test_weighted_scores'+str(i)+'.mat', {'weighted_scores': weighted_scores})
-#
-#
-# # Evaluation
-# loss = 0
-# for q in range(0,workers*probe):
-# 	p = prediction[q]
-# 	l = train_label[q]
-# 	lossloss = abs(p-l)
-# 	loss += lossloss
-# loss = loss/(workers*probe)
-# acc = 1 - loss
-# print(acc)
 
 sess.close()

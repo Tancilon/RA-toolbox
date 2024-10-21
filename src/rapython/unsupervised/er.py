@@ -8,7 +8,7 @@ Reference:
 - Mohammadi, M., & Rezaei, J. (2020). Ensemble ranking: Aggregation of rankings produced by different multi-criteria decision-making methods. Omega, 96, 102254.
 
 Authors:
-    tancilon
+    Qi Deng
 Date:
     2024-10-13
 """
@@ -16,6 +16,8 @@ import numpy as np
 from scipy.stats import norm
 
 from src.rapython.datatools import *
+
+__all__ = ['er']
 
 
 def ensemble_ranking(rank_data, tol=1e-10, max_iter=1000):
